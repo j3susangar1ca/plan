@@ -1,0 +1,35 @@
+{
+  "$schema": "../../schemas/port-scan.schema.json",
+  "port": 53413,
+  "protocol": "NETIS",
+  "transport_protocol": "UDP",
+  "ip": "201.131.132.7",
+  "scan_time": "2026-04-08T03:41:41.044923172Z",
+  "misconfigs": [],
+  "exposures": [],
+  "vulns": [],
+  "software": [
+    {
+      "type": ["IOT"],
+      "vendor": "",
+      "product": "",
+      "version": ""
+    }
+  ],
+  "hardware": [],
+  "operating_systems": [],
+  "threats": [],
+  "labels": [{"value": "IOT"}],
+  "screenshots": [],
+  "security_assessment": {
+    "risk_level": "high",
+    "findings": [
+      "NETIS router backdoor port detected (UDP 53413)",
+      "Known vulnerability in NETIS routers allowing unauthenticated access",
+      "Potential IoT device exposure"
+    ],
+    "references": [
+      "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2014-9016"
+    ]
+  }
+}
