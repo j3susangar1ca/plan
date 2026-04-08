@@ -1,0 +1,7 @@
+{
+  "id": "Z08-Subred-4",
+  "name": "Subred Adicional 10.2.4.0/24",
+  "risk_level": "MEDIO",
+  "risk_justification": "Propósito desconocido, sin inventario de hosts.",
+  "host_count": 0
+}

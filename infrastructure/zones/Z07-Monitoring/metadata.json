@@ -1,0 +1,7 @@
+{
+  "id": "Z07-Monitoring",
+  "name": "Monitoreo",
+  "risk_level": "MEDIO",
+  "risk_justification": "Tráfico ICMP con TTL=255, posible insuficiente aislamiento.",
+  "host_count": 0
+}

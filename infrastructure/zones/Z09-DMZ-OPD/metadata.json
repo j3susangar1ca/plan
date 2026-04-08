@@ -1,0 +1,7 @@
+{
+  "id": "Z09-DMZ-OPD",
+  "name": "DMZ OPD - IoT/Cámaras",
+  "risk_level": "ALTO",
+  "risk_justification": "Dispositivos Ubiquiti IoT y cámaras de vigilancia.",
+  "host_count": 0
+}

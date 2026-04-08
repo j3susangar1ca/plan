@@ -1,0 +1,7 @@
+{
+  "id": "Z10-Docker",
+  "name": "Docker Desktop Network",
+  "risk_level": "ALTO",
+  "risk_justification": "Contenedores Docker sobre red WiFi corporativa sin aislamiento adecuado.",
+  "host_count": 0
+}
