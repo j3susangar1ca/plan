@@ -1,0 +1,9 @@
+{
+  "id": "S12",
+  "cidr": "10.23.1.0/24",
+  "name": "DMZ Ubiquiti IoT/Cámaras",
+  "gateway": "10.23.1.254",
+  "dns_servers": [],
+  "host_count": 0,
+  "description": "DMZ para dispositivos Ubiquiti IoT y cámaras"
+}

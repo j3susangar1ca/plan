@@ -1,0 +1,9 @@
+{
+  "id": "S11",
+  "cidr": "10.2.4.0/24",
+  "name": "Subred Adicional",
+  "gateway": "10.2.4.254",
+  "dns_servers": [],
+  "host_count": 0,
+  "description": "Propósito no determinado"
+}
