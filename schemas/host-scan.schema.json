@@ -1,0 +1,77 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://security-audit.local/schemas/host-scan.schema.json",
+  "title": "Host Scan Result",
+  "description": "Schema for host infrastructure scan results",
+  "type": "object",
+  "required": ["ip_address", "scan_metadata", "open_ports", "tech_stack"],
+  "properties": {
+    "ip_address": {
+      "type": "string",
+      "format": "ipv4",
+      "description": "IPv4 address of the scanned host"
+    },
+    "ipv6_addresses": {
+      "type": "array",
+      "items": {"type": "string", "format": "ipv6"},
+      "default": []
+    },
+    "hostnames": {
+      "type": "array",
+      "items": {"type": "string"},
+      "description": "DNS hostnames associated with this host"
+    },
+    "network_zone": {
+      "type": "string",
+      "enum": ["DMZ", "INTERNAL", "CLOUD", "UNKNOWN"],
+      "description": "Network security zone classification"
+    },
+    "os_info": {
+      "type": "string",
+      "description": "Detected operating system"
+    },
+    "open_ports": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["port", "protocol", "service"],
+        "properties": {
+          "port": {"type": "integer", "minimum": 1, "maximum": 65535},
+          "protocol": {"type": "string", "enum": ["TCP", "UDP"]},
+          "service": {"type": "string"},
+          "banner_grab": {"type": ["string", "null"]},
+          "version": {"type": "string"}
+        }
+      }
+    },
+    "tech_stack": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["component", "version"],
+        "properties": {
+          "component": {"type": "string"},
+          "version": {"type": "string"},
+          "risk_flag": {"type": ["string", "null"]},
+          "cpe": {"type": "string"}
+        }
+      }
+    },
+    "forensic_evidence": {
+      "type": "object",
+      "properties": {
+        "whois_data": {"type": "object"},
+        "exposed_secrets": {"type": "array", "items": {"type": "string"}},
+        "config_flaws": {"type": "array", "items": {"type": "string"}},
+        "critical_artifacts": {"type": "array"}
+      }
+    },
+    "exploitation_vectors": {
+      "type": "object",
+      "properties": {
+        "privilege_level": {"type": "string"},
+        "attack_paths": {"type": "array", "items": {"type": "string"}}
+      }
+    }
+  }
+}

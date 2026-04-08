@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "project": {
+    "name": "Security Audit Framework",
+    "version": "2.0.0",
+    "type": "penetration-testing-knowledge-base",
+    "language": "es-MX",
+    "created": "2026-04-08",
+    "last_updated": "2026-04-08T12:00:00Z"
+  },
+  "metadata": {
+    "organization": "Hospital Civil de Guadalajara",
+    "assessment_type": "External Infrastructure Audit",
+    "classification": "CONFIDENTIAL",
+    "scope": {
+      "network_zones": ["Z01-DMZ"],
+      "ip_ranges": ["201.131.132.0/24"],
+      "domains": ["hcg.gob.mx"]
+    }
+  },
+  "structure": {
+    "schemas": "JSON schemas for data validation",
+    "infrastructure": "Scanned infrastructure data (hosts, ports, services)",
+    "vulnerabilities": "CVE advisories and technical analysis",
+    "exploits": "Proof-of-concept exploitation code",
+    "software": "Detected software inventory with risk assessment",
+    "ai_context": "Structured context for AI consumption"
+  },
+  "indices": {
+    "hosts": ["201.131.132.131", "201.131.132.7"],
+    "ports": [
+      21, 53, 80, 135, 139, 443, 445, 500, 3389, 49154, 53413, 53422, 52503
+    ],
+    "vulnerabilities": [
+      "CVE-2019-0211",
+      "CVE-2019-11043",
+      "CVE-2019-1547",
+      "CVE-2019-1559",
+      "CVE-2019-1563",
+      "CVE-2019-10081"
+    ],
+    "software": [
+      { "name": "Apache", "version": "2.4.38", "status": "EOL" },
+      { "name": "PHP", "version": "7.1.26", "status": "EOL" },
+      { "name": "OpenSSL", "version": "1.0.2q", "status": "EOL" }
+    ]
+  },
+  "risk_summary": {
+    "critical": 2,
+    "high": 4,
+    "medium": 0,
+    "low": 0,
+    "total_findings": 6
+  },
+  "ai_consumption": {
+    "primary_entry_point": "ai-context/project-summary.md",
+    "exploitation_workflow": "ai-context/exploitation-graph.md",
+    "attack_surface": "ai-context/attack-surface.json"
+  }
+}
