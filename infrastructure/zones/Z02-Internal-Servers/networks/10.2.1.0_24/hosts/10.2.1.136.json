@@ -1,0 +1,12 @@
+{
+  "$schema": "../../../../schemas/host-scan.schema.json",
+  "ip_address": "10.2.1.136",
+  "hostnames": ["srv-sii", "sii.hcg.gob.mx"],
+  "network_zone": "Internal-Servers",
+  "roles": ["Sistema de Información e Investigación"],
+  "open_ports": [],
+  "exploitation_vectors": {
+    "risk_level": "MEDIO",
+    "risk_justification": "Sistema de información médica e investigación"
+  }
+}

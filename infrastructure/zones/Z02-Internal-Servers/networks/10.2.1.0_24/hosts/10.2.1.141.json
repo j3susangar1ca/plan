@@ -1,0 +1,12 @@
+{
+  "$schema": "../../../../schemas/host-scan.schema.json",
+  "ip_address": "10.2.1.141",
+  "hostnames": ["srv-sah-cbs-pp", "sah.hcg.gob.mx", "cbs.hcg.gob.mx", "pp.hcg.gob.mx"],
+  "network_zone": "Internal-Servers",
+  "roles": ["Sistema de Archivos Hospitalarios", "CBS", "Plan de Pensiones"],
+  "open_ports": [],
+  "exploitation_vectors": {
+    "risk_level": "MEDIO",
+    "risk_justification": "Sistemas administrativos y de archivos hospitalarios"
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "$schema": "../../../../schemas/host-scan.schema.json",
+  "ip_address": "10.2.1.165",
+  "hostnames": ["srv-certificados", "certificados.hcg.gob.mx"],
+  "network_zone": "Internal-Servers",
+  "roles": ["Certificados Digitales"],
+  "open_ports": [],
+  "exploitation_vectors": {
+    "risk_level": "MEDIO",
+    "risk_justification": "Servidor de gestión de certificados digitales"
+  }
+}
