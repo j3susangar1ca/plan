@@ -1,4 +1,4 @@
-# Security Audit Framework - AI Context
+# Offensive Security Framework - AI Context
 
 ## Project Overview
 
@@ -45,7 +45,7 @@ This security audit framework provides a structured knowledge base for penetrati
 - **Exploit**: `/exploits/CVE-2019-11043/metasploit.rb`
 - **Reliability**: High
 
-## Technology Stack (EOL - Critical)
+## Target Technology Stack (Vulnerable)
 
 | Software | Version | Status | CVEs |
 |----------|---------|--------|------|

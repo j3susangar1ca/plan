@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "project": {
-    "name": "Security Audit Framework",
+    "name": "Offensive Security Framework",
     "version": "2.0.0",
     "type": "penetration-testing-knowledge-base",
     "language": "es-MX",
@@ -10,7 +10,7 @@
   },
   "metadata": {
     "organization": "Hospital Civil de Guadalajara",
-    "assessment_type": "External Infrastructure Audit",
+    "assessment_type": "Red Team Operations / Intrusion Framework",
     "classification": "CONFIDENTIAL",
     "scope": {
       "network_zones": ["Z01-DMZ"],
