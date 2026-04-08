@@ -128,19 +128,5 @@
         "final_access": "www-data or root"
       }
     ]
-  },
-  "recommendations": {
-    "immediate": [
-      "Upgrade Apache to 2.4.62+",
-      "Upgrade PHP to 8.2+",
-      "Upgrade OpenSSL to 3.0+",
-      "Disable FTP or migrate to SFTP",
-      "Implement WAF rules for known exploits"
-    ],
-    "short_term": [
-      "Network segmentation review",
-      "Implement intrusion detection",
-      "Security monitoring deployment"
-    ]
   }
 }
