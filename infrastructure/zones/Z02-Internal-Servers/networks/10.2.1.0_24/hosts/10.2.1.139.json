@@ -1,0 +1,16 @@
+{
+  "$schema": "../../../../schemas/host-scan.schema.json",
+  "ip_address": "10.2.1.139",
+  "hostnames": ["srv-sigma", "sigma.hcg.gob.mx", "api-sigma.hcg.gob.mx"],
+  "network_zone": "Internal-Servers",
+  "os_info": "Linux/Unknown",
+  "roles": ["Sistema Biométrico", "Control de Acceso"],
+  "open_ports": [
+    {"port": 80, "protocol": "TCP", "service": "HTTP"},
+    {"port": 443, "protocol": "TCP", "service": "HTTPS"}
+  ],
+  "exploitation_vectors": {
+    "risk_level": "ALTO",
+    "risk_justification": "Datos biométricos sensibles, API expuesta"
+  }
+}

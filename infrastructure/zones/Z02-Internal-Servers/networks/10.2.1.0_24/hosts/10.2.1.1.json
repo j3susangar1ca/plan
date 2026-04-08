@@ -1,0 +1,24 @@
+{
+  "$schema": "../../../../schemas/host-scan.schema.json",
+  "ip_address": "10.2.1.1",
+  "ipv4_addresses": ["10.2.1.1", "10.2.1.18"],
+  "hostnames": ["srv-opd-hcg-org", "opd-hcg.org"],
+  "network_zone": "Internal-Servers",
+  "os_info": "Windows Server",
+  "roles": ["Domain Controller", "DNS Server", "LDAP Server"],
+  "active_domain": "opd-hcg.org",
+  "open_ports": [
+    {"port": 53, "protocol": "TCP/UDP", "service": "DNS"},
+    {"port": 88, "protocol": "TCP/UDP", "service": "Kerberos"},
+    {"port": 135, "protocol": "TCP", "service": "RPC"},
+    {"port": 389, "protocol": "TCP/UDP", "service": "LDAP"},
+    {"port": 445, "protocol": "TCP", "service": "SMB"},
+    {"port": 636, "protocol": "TCP", "service": "LDAPS"},
+    {"port": 3268, "protocol": "TCP", "service": "GC LDAP"},
+    {"port": 3269, "protocol": "TCP", "service": "GC LDAPS"}
+  ],
+  "exploitation_vectors": {
+    "risk_level": "CRITICO",
+    "risk_justification": "DC expuesto a toda la red, LDAP sin cifrar accesible, intento de autenticación LDAP desde WiFi (10.254.117.118)"
+  }
+}

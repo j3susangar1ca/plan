@@ -1,0 +1,9 @@
+{
+  "id": "S15",
+  "cidr": "148.202.3.0/24",
+  "name": "DNS Externos UDG",
+  "gateway": null,
+  "dns_servers": [],
+  "host_count": 1,
+  "description": "Infraestructura externa fuera de control directo - Red UDG"
+}
