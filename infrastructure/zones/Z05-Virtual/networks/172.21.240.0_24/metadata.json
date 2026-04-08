@@ -1,0 +1,9 @@
+{
+  "id": "S08",
+  "cidr": "172.21.240.0/24",
+  "name": "Hyper-V Default Switch",
+  "gateway": "172.21.240.1",
+  "dns_servers": [],
+  "host_count": 0,
+  "description": "Red virtual por defecto de Hyper-V"
+}

@@ -1,0 +1,9 @@
+{
+  "id": "S06",
+  "cidr": "201.131.132.0/24",
+  "name": "DMZ Web Pública HCG",
+  "gateway": null,
+  "dns_servers": [],
+  "host_count": 2,
+  "description": "Servidores web públicos e intranet"
+}

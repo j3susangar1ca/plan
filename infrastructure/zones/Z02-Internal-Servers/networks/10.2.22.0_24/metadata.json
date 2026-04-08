@@ -1,0 +1,9 @@
+{
+  "id": "S03",
+  "cidr": "10.2.22.0/24",
+  "name": "PESOPD Peso Personal",
+  "gateway": null,
+  "dns_servers": [],
+  "host_count": 0,
+  "description": "Servidor de control de peso personal"
+}

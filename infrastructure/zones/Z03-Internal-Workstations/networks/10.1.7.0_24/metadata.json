@@ -1,0 +1,9 @@
+{
+  "id": "S04",
+  "cidr": "10.1.7.0/24",
+  "name": "VLAN Usuarios Corporativos",
+  "gateway": "10.1.7.254",
+  "dns_servers": ["10.2.1.1"],
+  "host_count": 83,
+  "description": "VLAN principal de estaciones de trabajo"
+}

@@ -1,0 +1,9 @@
+{
+  "id": "S02",
+  "cidr": "10.2.61.0/24",
+  "name": "SYNHCGN Nómina",
+  "gateway": null,
+  "dns_servers": [],
+  "host_count": 0,
+  "description": "Servidor de nómina"
+}

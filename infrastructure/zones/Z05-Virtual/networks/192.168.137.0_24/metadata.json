@@ -1,0 +1,9 @@
+{
+  "id": "S09",
+  "cidr": "192.168.137.0/24",
+  "name": "ICS mshome",
+  "gateway": "192.168.137.1",
+  "dns_servers": [],
+  "host_count": 0,
+  "description": "Internet Connection Sharing"
+}

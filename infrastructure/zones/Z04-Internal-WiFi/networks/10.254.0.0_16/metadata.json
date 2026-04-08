@@ -1,0 +1,9 @@
+{
+  "id": "S05",
+  "cidr": "10.254.0.0/16",
+  "name": "WiFi Corporativa redopdhcg",
+  "gateway": "10.254.0.1",
+  "dns_servers": ["148.202.3.5", "1.1.1.1", "8.8.8.8", "148.202.1.29"],
+  "host_count": 8,
+  "description": "Red WiFi corporativa WPA2-Personal"
+}

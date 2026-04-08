@@ -1,0 +1,9 @@
+{
+  "id": "S10",
+  "cidr": "10.1.97.0/24",
+  "name": "VLAN Monitoreo",
+  "gateway": "10.1.97.254",
+  "dns_servers": [],
+  "host_count": 0,
+  "description": "Red de monitoreo y supervisión"
+}
