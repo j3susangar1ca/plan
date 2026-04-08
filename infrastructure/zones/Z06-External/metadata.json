@@ -1,0 +1,7 @@
+{
+  "id": "Z06-External",
+  "name": "External - ISP y DNS Público",
+  "risk_level": "BAJO",
+  "risk_justification": "Infraestructura externa fuera de control directo.",
+  "host_count": 0
+}

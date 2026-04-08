@@ -1,0 +1,7 @@
+{
+  "id": "Z03-Internal-Workstations",
+  "name": "Estaciones de Trabajo Corporativas",
+  "risk_level": "MEDIO",
+  "risk_justification": "Alta densidad de endpoints, VoIP/WebRTC sin cifrar detectado, múltiples OUIs no identificados.",
+  "host_count": 83
+}

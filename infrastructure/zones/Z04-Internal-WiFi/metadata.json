@@ -1,0 +1,7 @@
+{
+  "id": "Z04-Internal-WiFi",
+  "name": "Red WiFi Corporativa",
+  "risk_level": "ALTO",
+  "risk_justification": "WPA2-Personal con clave compartida, intento LDAP desde WiFi hacia DC, AJP13 expuesto, clientes sin aislamiento.",
+  "host_count": 8
+}

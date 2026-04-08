@@ -1,0 +1,7 @@
+{
+  "id": "Z01-DMZ",
+  "name": "DMZ - Servidores Externos",
+  "risk_level": "CRITICO",
+  "risk_justification": "Servidores públicos con software desactualizado (Apache 2.4.38, PHP 7.1.26, OpenSSL 1.0.2q), cPanel con múltiples puertos abiertos.",
+  "host_count": 5
+}

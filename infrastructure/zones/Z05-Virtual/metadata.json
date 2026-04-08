@@ -1,0 +1,7 @@
+{
+  "id": "Z05-Virtual",
+  "name": "Redes Virtuales",
+  "risk_level": "MEDIO",
+  "risk_justification": "Superposición potencial con redes de producción, Docker en red WiFi, ICS sin segmentación.",
+  "host_count": 0
+}
