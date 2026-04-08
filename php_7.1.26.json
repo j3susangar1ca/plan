@@ -1,0 +1,41 @@
+{
+  "$schema": "../schemas/cve-advisory.schema.json",
+  "software": "PHP",
+  "version": "7.1.26",
+  "status": "End-of-Life (EOL)",
+  "release_date": "2019-01-10",
+  "eol_date": "2019-12-01",
+  "cpe": "cpe:2.3:a:php:php:7.1.26:*:*:*:*:*:*:*",
+  "security_assessment": {
+    "risk_level": "critical",
+    "summary": "Reached EOL on December 1, 2019. No longer receives security patches or bug fixes. Extremely vulnerable in production environments due to PHP-FPM RCE."
+  },
+  "vulnerabilities": [
+    {
+      "id": "CVE-2019-11043",
+      "type": "Remote Code Execution",
+      "impact": "Full system compromise via PHP-FPM buffer underflow with Nginx",
+      "criticality": "critical",
+      "exploit_available": true,
+      "requirements": ["Nginx + PHP-FPM", "fastcgi_split_path_info directive"]
+    }
+  ],
+  "implementations": [
+    {
+      "target": "Portal Web HCG",
+      "host": "201.131.132.131",
+      "role": "Application Runtime Engine",
+      "network_zone": "Z01-DMZ",
+      "ports": [80, 443]
+    }
+  ],
+  "remediation": {
+    "upgrade_required": true,
+    "recommended_version": "8.2.x or later",
+    "urgent_action": "Immediate upgrade required due to active exploitation in the wild"
+  },
+  "metadata": {
+    "aliases": ["PHP 7.1", "Hypertext Preprocessor"],
+    "tags": ["software/language", "status/eol", "risk/critical", "vendor/php"]
+  }
+}

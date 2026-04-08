@@ -1,0 +1,48 @@
+{
+  "$schema": "../schemas/cve-advisory.schema.json",
+  "software": "Apache HTTP Server",
+  "version": "2.4.38",
+  "platform": "Win64",
+  "status": "End-of-Life (EOL)",
+  "release_date": "2019-02-11",
+  "eol_date": "2019-04-01",
+  "cpe": "cpe:2.3:a:apache:http_server:2.4.38:*:*:*:*:*:*:*",
+  "security_assessment": {
+    "risk_level": "critical",
+    "summary": "Version from 2019 with multiple critical security flaws corrected in subsequent updates. High compromise risk in DMZ environments due to LPE vulnerability."
+  },
+  "vulnerabilities": [
+    {
+      "id": "CVE-2019-0211",
+      "type": "Local Privilege Escalation",
+      "impact": "Child process to parent (SYSTEM/root) escalation via shared memory manipulation",
+      "criticality": "critical",
+      "exploit_available": true
+    },
+    {
+      "id": "CVE-2019-10081",
+      "type": "Use-After-Free",
+      "module": "mod_http2",
+      "impact": "Denial of Service / Potential RCE",
+      "criticality": "high"
+    }
+  ],
+  "implementations": [
+    {
+      "target": "Portal Web HCG",
+      "host": "201.131.132.131",
+      "role": "Main Web Server",
+      "network_zone": "Z01-DMZ",
+      "ports": [80, 443]
+    }
+  ],
+  "remediation": {
+    "upgrade_required": true,
+    "recommended_version": "2.4.62 or later",
+    "urgent_action": "Immediate upgrade required due to active exploitation vectors"
+  },
+  "metadata": {
+    "aliases": ["Apache HTTP Server", "Apache Win64", "httpd"],
+    "tags": ["software/web-server", "status/eol", "risk/critical", "vendor/apache"]
+  }
+}

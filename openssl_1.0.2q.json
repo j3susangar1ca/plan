@@ -1,0 +1,54 @@
+{
+  "$schema": "../schemas/cve-advisory.schema.json",
+  "software": "OpenSSL",
+  "version": "1.0.2q",
+  "status": "End-of-Life (EOL)",
+  "release_date": "2018-11-20",
+  "eol_date": "2019-12-31",
+  "cpe": "cpe:2.3:a:openssl:openssl:1.0.2q:*:*:*:*:*:*:*",
+  "security_assessment": {
+    "risk_level": "critical",
+    "summary": "Reached EOL in December 2019. No longer receives security patches. Encryption protocols exposed to modern interception and key exfiltration attacks."
+  },
+  "vulnerabilities": [
+    {
+      "id": "CVE-2019-1547",
+      "type": "Side-Channel Attack",
+      "impact": "Exfiltration and reconstruction of private encryption keys via timing attack",
+      "criticality": "medium",
+      "component": "ECDSA signature generation"
+    },
+    {
+      "id": "CVE-2019-1559",
+      "type": "Padding Oracle",
+      "impact": "Exposure of asymmetric encryption channels",
+      "criticality": "medium",
+      "component": "SSLv3 padding validation"
+    },
+    {
+      "id": "CVE-2019-1563",
+      "type": "Cache Timing Attack",
+      "impact": "Compromise of traffic confidentiality (Port 443)",
+      "criticality": "medium",
+      "component": "AES-NI implementation"
+    }
+  ],
+  "implementations": [
+    {
+      "target": "Portal Web HCG",
+      "host": "201.131.132.131",
+      "role": "Cryptography Service Engine",
+      "network_zone": "Z01-DMZ",
+      "ports": [443]
+    }
+  ],
+  "remediation": {
+    "upgrade_required": true,
+    "recommended_version": "3.0.x or later",
+    "urgent_action": "Immediate upgrade required for PCI-DSS compliance"
+  },
+  "metadata": {
+    "aliases": ["OpenSSL 1.0.2", "libssl", "libcrypto"],
+    "tags": ["software/cryptography", "status/eol", "risk/high", "vendor/openssl"]
+  }
+}
