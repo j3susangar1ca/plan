@@ -32,25 +32,47 @@
       21, 53, 80, 135, 139, 443, 445, 500, 3389, 49154, 53413, 53422, 52503
     ],
     "vulnerabilities": [
+      "CVE-2016-1240",
       "CVE-2019-0211",
       "CVE-2019-11043",
       "CVE-2019-1547",
       "CVE-2019-1559",
       "CVE-2019-1563",
-      "CVE-2019-10081"
+      "CVE-2019-10081",
+      "CVE-2021-21703",
+      "CVE-2021-4034"
+    ],
+    "exploits": [
+      "cve/CVE-2016-1240",
+      "cve/CVE-2019-0211",
+      "cve/CVE-2019-11043",
+      "cve/CVE-2019-1547",
+      "cve/CVE-2019-1559",
+      "cve/CVE-2019-1563",
+      "cve/CVE-2019-10081",
+      "cve/CVE-2021-21703",
+      "cve/CVE-2021-4034",
+      "frameworks/samv5",
+      "implants/c2",
+      "implants/persistence",
+      "implants/rootkits",
+      "platform/linux",
+      "platform/windows"
     ],
     "software": [
       { "name": "Apache", "version": "2.4.38", "status": "EOL" },
       { "name": "PHP", "version": "7.1.26", "status": "EOL" },
-      { "name": "OpenSSL", "version": "1.0.2q", "status": "EOL" }
+      { "name": "OpenSSL", "version": "1.0.2q", "status": "EOL" },
+      { "name": "Polkit", "version": "0.105", "status": "Vulnerable" },
+      { "name": "Tomcat", "version": "7.0.x", "status": "Vulnerable" }
     ]
   },
   "risk_summary": {
-    "critical": 2,
-    "high": 4,
+    "critical": 4,
+    "high": 5,
     "medium": 0,
     "low": 0,
-    "total_findings": 6
+    "total_findings": 9
   },
   "ai_consumption": {
     "primary_entry_point": "ai-context/project-summary.md",

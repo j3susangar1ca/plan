@@ -80,32 +80,46 @@ security-audit-framework/
 │   ├── zones/Z01-DMZ/              # Network zone
 │   └── ports/                       # Port scan results
 ├── vulnerabilities/                 # CVE advisories
+│   ├── CVE-2016-1240/
 │   ├── CVE-2019-0211/
 │   ├── CVE-2019-11043/
 │   ├── CVE-2019-1547/
 │   ├── CVE-2019-1559/
 │   ├── CVE-2019-1563/
-│   └── CVE-2019-10081/
+│   ├── CVE-2019-10081/
+│   ├── CVE-2021-21703/
+│   └── CVE-2021-4034/
 ├── exploits/                        # Proof-of-concept code
-│   ├── CVE-2019-0211/
-│   └── CVE-2019-11043/
+│   ├── cve/
+│   │   ├── CVE-2016-1240/
+│   │   ├── CVE-2019-0211/
+│   │   ├── CVE-2019-11043/
+│   │   ├── CVE-2021-21703/
+│   │   └── CVE-2021-4034/
+│   ├── frameworks/samv5/
+│   ├── implants/
+│   └── platform/
 ├── software/                        # Software inventory
 └── ai-context/                      # AI consumption context
 ```
 
 ## Quick Reference for AI Agents
 
-### Primary Exploitation Path
-1. Deploy `carpe-diem.php` to target web server
+### Primary Exploitation Path (Apache Root)
+1. Deploy `apache_carpe_diem_lpe_cve_2019_0211.php` to target web server
 2. Trigger via HTTP request
 3. Wait for Apache graceful restart (logrotate)
 4. Execute payload as root
 
-### Secondary Exploitation Path
-1. Use Metasploit module `metasploit.rb`
-2. Configure TARGETURI and options
-3. Execute for PHP-FPM RCE
-4. Escalate via CVE-2019-0211 if needed
+### Linux Privilege Escalation (PwnKit)
+1. Gain local access (any user)
+2. Deploy `linux_pwnkit_lpe_cve_2021_4034.c`
+3. Compile and execute for immediate root access (Critical)
+
+### Secondary RCE Path (PHP-FPM)
+1. Use Metasploit module (SAM-V5 style)
+2. Target PHP-FPM for RCE (CVE-2019-11043)
+3. Escalate via CVE-2021-4034 or CVE-2019-0211
 
 ## Data Consumption Guidelines
 

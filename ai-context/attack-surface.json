@@ -45,22 +45,40 @@
         "name": "Apache",
         "version": "2.4.38",
         "status": "EOL",
-        "critical_cves": ["CVE-2019-0211"]
+        "critical_cves": ["CVE-2019-0211", "CVE-2016-1240"]
       },
       "runtime": {
         "name": "PHP",
         "version": "7.1.26",
         "status": "EOL",
-        "critical_cves": ["CVE-2019-11043"]
+        "critical_cves": ["CVE-2019-11043", "CVE-2021-21703"]
       },
       "crypto": {
         "name": "OpenSSL",
         "version": "1.0.2q",
         "status": "EOL",
         "critical_cves": ["CVE-2019-1547", "CVE-2019-1559", "CVE-2019-1563"]
+      },
+      "system": {
+        "name": "Polkit",
+        "version": "0.105",
+        "status": "Vulnerable",
+        "critical_cves": ["CVE-2021-4034"]
       }
     },
     "exploitation_chains": [
+      {
+        "name": "PwnKit Root",
+        "steps": [
+          {
+            "step": 1,
+            "action": "Execute linux_pwnkit_lpe_cve_2021_4034.c",
+            "cve": "CVE-2021-4034",
+            "result": "Immediate root shell"
+          }
+        ],
+        "final_access": "root"
+      },
       {
         "name": "Web-to-Root",
         "steps": [
