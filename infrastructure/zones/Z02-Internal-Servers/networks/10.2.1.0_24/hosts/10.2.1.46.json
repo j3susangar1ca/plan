@@ -1,0 +1,12 @@
+{
+  "$schema": "../../../../schemas/host-scan.schema.json",
+  "ip_address": "10.2.1.46",
+  "hostnames": ["srv-correo", "correo.opdhcg.net"],
+  "network_zone": "Internal-Servers",
+  "roles": ["Servidor de Correo"],
+  "open_ports": [],
+  "exploitation_vectors": {
+    "risk_level": "MEDIO",
+    "risk_justification": "Servidor de correo institucional"
+  }
+}
