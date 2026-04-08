@@ -1,0 +1,36 @@
+{
+  "software": "Apache HTTP Server",
+  "version": "2.4.38",
+  "platform": "Win64",
+  "status": "obsolete",
+  "security_assessment": {
+    "risk_level": "critical",
+    "summary": "Version from 2019 with multiple critical security flaws corrected in subsequent updates. High compromise risk in DMZ environments."
+  },
+  "vulnerabilities": [
+    {
+      "id": "CVE-2019-0211",
+      "type": "Privilege Escalation",
+      "impact": "Child process to parent (SYSTEM/root) escalation",
+      "criticality": "high"
+    },
+    {
+      "id": "CVE-2019-10081",
+      "type": "Memory Manipulation",
+      "module": "mod_http2",
+      "impact": "Information disclosure",
+      "criticality": "medium"
+    }
+  ],
+  "implementations": [
+    {
+      "target": "Portal Web HCG",
+      "role": "Main Web Server",
+      "network_zone": "Z01-DMZ"
+    }
+  ],
+  "metadata": {
+    "aliases": ["Apache HTTP Server", "Apache Win64"],
+    "tags": ["software/servidor-web", "estado/obsoleto", "vulnerabilidad/critica"]
+  }
+}

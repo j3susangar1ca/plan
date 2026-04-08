@@ -1,0 +1,16 @@
+{
+  "port": 139,
+  "protocol": "NETBIOS",
+  "transport_protocol": "TCP",
+  "misconfigs": [],
+  "exposures": [],
+  "vulns": [],
+  "software": [],
+  "hardware": [],
+  "operating_systems": [],
+  "threats": [],
+  "labels": [],
+  "ip": "201.131.132.7",
+  "scan_time": "2026-04-07T10:31:53.633097308Z",
+  "screenshots": []
+}

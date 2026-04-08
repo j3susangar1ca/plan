@@ -1,0 +1,47 @@
+{
+  "port": 500,
+  "protocol": "IKE",
+  "transport_protocol": "UDP",
+  "misconfigs": [],
+  "exposures": [],
+  "vulns": [],
+  "software": [],
+  "hardware": [
+    {
+      "evidence": [],
+      "type": ["VPN", "NETWORK"],
+      "vendor": "",
+      "product": "",
+      "version": "",
+      "update": "",
+      "edition": "",
+      "cpe": "",
+      "components": []
+    }
+  ],
+  "operating_systems": [],
+  "threats": [],
+  "labels": [
+    {
+      "evidence": [],
+      "value": "VPN"
+    },
+    {
+      "evidence": [],
+      "value": "NETWORK"
+    }
+  ],
+  "ip": "201.131.132.131",
+  "scan_time": "2026-04-07T18:39:26.57467243Z",
+  "banner": "",
+  "banner_hash_sha256": "",
+  "screenshots": [],
+  "banner_hex": "",
+  "ike": {
+    "v2": {
+      "accepted_proposal": false,
+      "vendor_ids": [],
+      "notify_message_types": [14]
+    }
+  }
+}

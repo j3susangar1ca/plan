@@ -1,0 +1,69 @@
+{
+  "port": 445,
+  "protocol": "SMB",
+  "transport_protocol": "TCP",
+  "misconfigs": [],
+  "exposures": [],
+  "vulns": [],
+  "software": [],
+  "hardware": [],
+  "operating_systems": [],
+  "threats": [],
+  "labels": [],
+  "ip": "201.131.132.7",
+  "scan_time": "2026-04-08T03:39:17.472343608Z",
+  "banner": "",
+  "banner_hash_sha256": "",
+  "screenshots": [],
+  "banner_hex": "",
+  "smb": {
+    "smbv1_support": false,
+    "smb_version": {
+      "major": 2,
+      "minor": 1,
+      "revision": 0,
+      "version_string": "SMB 2.1"
+    },
+    "smb_capabilities": {
+      "smb_dfs_support": true,
+      "smb_leasing_support": true,
+      "smb_multicredit_support": true,
+      "smb_multichan_support": false,
+      "smb_persistent_handle_support": false,
+      "smb_directory_leasing_support": false,
+      "smb_encryption_support": false
+    },
+    "has_ntlm": true,
+    "negotiation_log": {
+      "header_log": {
+        "protocol_id": "00000000fe534d42",
+        "status": 0,
+        "command": 0,
+        "credits": 1,
+        "flags": 1
+      },
+      "security_mode": 3,
+      "dialect_revision": 528,
+      "server_guid": "0000000000000000000000000000000094a990d5d75e0a408605a41f737164a9",
+      "capabilities": 7,
+      "system_time": 1775619549,
+      "server_start_time": 1772002306,
+      "authentication_types": [
+        "1.3.6.1.4.1.311.2.2.30",
+        "1.3.6.1.4.1.311.2.2.10"
+      ]
+    },
+    "session_setup_log": {
+      "header_log": {
+        "protocol_id": "00000000fe534d42",
+        "status": 3221225494,
+        "command": 1,
+        "credits": 1,
+        "flags": 1
+      },
+      "setup_flags": 0,
+      "target_name": "WIN-EIM9E244HNE",
+      "negotiate_flags": 2726953477
+    }
+  }
+}

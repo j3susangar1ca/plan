@@ -1,0 +1,28 @@
+{
+  "software": "PHP",
+  "version": "7.1.26",
+  "status": "End-of-Life (EOL)",
+  "security_assessment": {
+    "risk_level": "critical",
+    "summary": "Reached EOL on December 1, 2019. No longer receives security patches or bug fixes. Extremely vulnerable in production environments."
+  },
+  "vulnerabilities": [
+    {
+      "id": "CVE-2019-11043",
+      "type": "Remote Code Execution (RCE)",
+      "impact": "Full system compromise via PHP-FPM",
+      "criticality": "critical"
+    }
+  ],
+  "implementations": [
+    {
+      "target": "Portal Web HCG",
+      "role": "Application Runtime Engine",
+      "network_zone": "Z01-DMZ"
+    }
+  ],
+  "metadata": {
+    "aliases": ["PHP 7.1"],
+    "tags": ["software/lenguaje", "estado/eol", "vulnerabilidad/critica"]
+  }
+}

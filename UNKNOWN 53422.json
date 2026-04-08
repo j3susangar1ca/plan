@@ -1,0 +1,16 @@
+{
+  "port": 53422,
+  "protocol": "UNKNOWN",
+  "transport_protocol": "UDP",
+  "misconfigs": [],
+  "exposures": [],
+  "vulns": [],
+  "software": [],
+  "hardware": [],
+  "operating_systems": [],
+  "threats": [],
+  "labels": [],
+  "ip": "201.131.132.7",
+  "scan_time": "2026-04-03T15:42:37.458309742Z",
+  "screenshots": []
+}

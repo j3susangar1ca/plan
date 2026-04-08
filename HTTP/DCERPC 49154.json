@@ -1,0 +1,40 @@
+{
+  "port": 49154,
+  "protocol": "DCERPC",
+  "transport_protocol": "TCP",
+  "misconfigs": [],
+  "exposures": [],
+  "vulns": [],
+  "software": [
+    {
+      "evidence": [],
+      "type": ["REMOTE_ACCESS"],
+      "vendor": "",
+      "product": "",
+      "version": "",
+      "update": "",
+      "edition": "",
+      "cpe": "",
+      "components": []
+    }
+  ],
+  "hardware": [],
+  "operating_systems": [],
+  "threats": [],
+  "labels": [
+    {
+      "evidence": [],
+      "value": "REMOTE_ACCESS"
+    }
+  ],
+  "ip": "201.131.132.7",
+  "scan_time": "2026-04-07T19:32:37.797445575Z",
+  "banner": "",
+  "screenshots": [],
+  "banner_hex": "",
+  "dcerpc": {
+    "could_bind": true,
+    "could_query_epm": false,
+    "endpoints": []
+  }
+}
