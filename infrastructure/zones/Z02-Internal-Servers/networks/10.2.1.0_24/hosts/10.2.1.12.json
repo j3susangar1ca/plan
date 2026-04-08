@@ -1,0 +1,15 @@
+{
+  "$schema": "../../../../schemas/host-scan.schema.json",
+  "ip_address": "10.2.1.12",
+  "hostnames": ["srv-portal", "portal.hcg.gob.mx"],
+  "network_zone": "Internal-Servers",
+  "roles": ["Portal Web Interno"],
+  "open_ports": [
+    {"port": 80, "protocol": "TCP", "service": "HTTP"},
+    {"port": 443, "protocol": "TCP", "service": "HTTPS"}
+  ],
+  "exploitation_vectors": {
+    "risk_level": "MEDIO",
+    "risk_justification": "Portal web interno"
+  }
+}

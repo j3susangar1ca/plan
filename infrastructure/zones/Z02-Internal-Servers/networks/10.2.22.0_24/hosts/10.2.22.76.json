@@ -1,0 +1,12 @@
+{
+  "$schema": "../../../../schemas/host-scan.schema.json",
+  "ip_address": "10.2.22.76",
+  "hostnames": ["srv-pesopd", "pesopd.opd-hcg.org"],
+  "network_zone": "Internal-Servers",
+  "roles": ["Control de Peso Personal"],
+  "open_ports": [],
+  "exploitation_vectors": {
+    "risk_level": "MEDIO",
+    "risk_justification": "Servidor de control de peso institucional"
+  }
+}

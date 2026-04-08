@@ -1,0 +1,12 @@
+{
+  "$schema": "../../../../schemas/host-scan.schema.json",
+  "ip_address": "10.2.1.11",
+  "hostnames": ["srv-jim3"],
+  "network_zone": "Internal-Servers",
+  "roles": ["Aplicación JIM3"],
+  "open_ports": [],
+  "exploitation_vectors": {
+    "risk_level": "MEDIO",
+    "risk_justification": "Servidor de aplicación interna"
+  }
+}
