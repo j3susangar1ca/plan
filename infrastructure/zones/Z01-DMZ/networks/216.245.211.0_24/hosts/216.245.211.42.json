@@ -1,0 +1,33 @@
+{
+  "$schema": "../../../../schemas/host-scan.schema.json",
+  "ip_address": "216.245.211.42",
+  "hostnames": ["lajun.hosting-mexico.net", "cpanel.hcg.gob.mx", "whm.hcg.gob.mx", "webmail.hcg.gob.mx"],
+  "network_zone": "Z01-DMZ",
+  "os_info": "CentOS/CloudLinux",
+  "roles": ["cPanel Hosting", "WHM Management", "Webmail"],
+  "open_ports": [
+    {"port": 21, "protocol": "TCP", "service": "FTP"},
+    {"port": 22, "protocol": "TCP", "service": "SSH"},
+    {"port": 25, "protocol": "TCP", "service": "SMTP"},
+    {"port": 53, "protocol": "TCP/UDP", "service": "DNS"},
+    {"port": 80, "protocol": "TCP", "service": "HTTP"},
+    {"port": 110, "protocol": "TCP", "service": "POP3"},
+    {"port": 143, "protocol": "TCP", "service": "IMAP"},
+    {"port": 443, "protocol": "TCP", "service": "HTTPS"},
+    {"port": 465, "protocol": "TCP", "service": "SMTPS"},
+    {"port": 587, "protocol": "TCP", "service": "SMTP-MSA"},
+    {"port": 993, "protocol": "TCP", "service": "IMAPS"},
+    {"port": 995, "protocol": "TCP", "service": "POP3S"},
+    {"port": 2082, "protocol": "TCP", "service": "cPanel HTTP"},
+    {"port": 2083, "protocol": "TCP", "service": "cPanel HTTPS"},
+    {"port": 2086, "protocol": "TCP", "service": "WHM HTTP"},
+    {"port": 2087, "protocol": "TCP", "service": "WHM HTTPS"},
+    {"port": 2095, "protocol": "TCP", "service": "Webmail HTTP"},
+    {"port": 2096, "protocol": "TCP", "service": "Webmail HTTPS"},
+    {"port": 3306, "protocol": "TCP", "service": "MySQL"}
+  ],
+  "exploitation_vectors": {
+    "risk_level": "CRITICO",
+    "risk_justification": "WHM expuesto a Internet, MySQL accesible, múltiples servicios de correo expuestos"
+  }
+}

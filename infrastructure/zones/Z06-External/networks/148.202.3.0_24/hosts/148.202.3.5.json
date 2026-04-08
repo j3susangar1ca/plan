@@ -1,0 +1,14 @@
+{
+  "$schema": "../../../../schemas/host-scan.schema.json",
+  "ip_address": "148.202.3.5",
+  "hostnames": ["b.rec.ns.udg.mx"],
+  "network_zone": "Z06-External",
+  "roles": ["DNS Externo UDG"],
+  "open_ports": [
+    {"port": 53, "protocol": "TCP/UDP", "service": "DNS"}
+  ],
+  "exploitation_vectors": {
+    "risk_level": "INFO",
+    "risk_justification": "Infraestructura externa fuera del control administrativo de HCG"
+  }
+}
