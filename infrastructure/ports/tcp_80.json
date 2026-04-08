@@ -1,0 +1,82 @@
+{
+  "$schema": "../../schemas/port-scan.schema.json",
+  "port": 80,
+  "protocol": "HTTP",
+  "transport_protocol": "TCP",
+  "ip": "201.131.132.7",
+  "scan_time": "2026-04-07T07:21:32.193593972Z",
+  "misconfigs": [],
+  "exposures": [],
+  "vulns": [],
+  "software": [
+    {
+      "vendor": "microsoft",
+      "product": "asp.net",
+      "version": "",
+      "cpe": "cpe:2.3:a:microsoft:asp.net:*:*:*:*:*:*:*:*"
+    },
+    {
+      "vendor": "microsoft",
+      "product": "internet_information_services",
+      "version": "7.5",
+      "cpe": "cpe:2.3:a:microsoft:iis:7.5:*:*:*:*:*:*:*"
+    }
+  ],
+  "hardware": [],
+  "operating_systems": [
+    {
+      "vendor": "microsoft",
+      "product": "windows_server_2008_r2",
+      "version": "",
+      "cpe": "cpe:2.3:o:microsoft:windows_server_2008:r2:*:*:*:*:*:*:*"
+    }
+  ],
+  "threats": [],
+  "labels": [],
+  "screenshots": [],
+  "endpoints": [
+    {
+      "hostname": "201.131.132.7",
+      "port": 80,
+      "path": "/",
+      "endpoint_type": "HTTP",
+      "transport_protocol": "TCP",
+      "scan_time": "2026-04-07T07:21:32.193593972Z",
+      "ip": "201.131.132.7",
+      "http": {
+        "uri": "http://201.131.132.7/",
+        "protocol": "HTTP/1.1",
+        "status_code": 301,
+        "status_reason": "Moved Permanently",
+        "headers": {
+          "Server": ["Microsoft-IIS/7.5"],
+          "X-Powered-By": ["ASP.NET"],
+          "Content-Type": ["text/html; charset=UTF-8"],
+          "Location": ["http://187.241.167.211/utsyn/glogin.aspx"]
+        },
+        "html_title": "Documento movido",
+        "body_size": 174,
+        "body_hash_sha256": "7703c3726b3e1a52c0824a0c4a10f75c88d0d93f0d1030546ecc4c4b9f790134",
+        "supported_versions": ["HTTP/1.1"],
+        "redirect_chain": [
+          {
+            "hostname": "187.241.167.211",
+            "port": 80,
+            "transport_protocol": "TCP",
+            "path": "/utsyn/glogin.aspx",
+            "reason": "HTTP_3XX",
+            "scheme": "http"
+          }
+        ]
+      }
+    }
+  ],
+  "security_assessment": {
+    "risk_level": "medium",
+    "findings": [
+      "HTTP redirect to external IP address (187.241.167.211)",
+      "Server version disclosure in headers",
+      "Windows Server 2008 R2 is End-of-Life"
+    ]
+  }
+}

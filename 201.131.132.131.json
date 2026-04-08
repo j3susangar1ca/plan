@@ -1,0 +1,124 @@
+{
+  "$schema": "../../schemas/host-scan.schema.json",
+  "ip_address": "201.131.132.131",
+  "ipv6_addresses": [],
+  "mac_addresses": [],
+  "hostnames": [
+    "www.hcg.gob.mx",
+    "portal.hcg.gob.mx",
+    "mail.hcg.gob.mx",
+    "ftp.hcg.gob.mx"
+  ],
+  "network_zone": "DMZ",
+  "os_info": "Win64",
+  "user_context": {
+    "username": null,
+    "sid": null,
+    "cloud_account": null,
+    "groups": [],
+    "active_privileges": []
+  },
+  "network_config": {
+    "dns_servers": [],
+    "dns_suffixes": [],
+    "gateways": [],
+    "dhcp_servers": [],
+    "proxy_enabled": null
+  },
+  "open_ports": [
+    {
+      "port": 443,
+      "protocol": "TCP",
+      "service": "HTTPS",
+      "banner_grab": "Redirige / hacia /hcg/",
+      "security_notes": "SSL/TLS configuration requires assessment"
+    },
+    {
+      "port": 80,
+      "protocol": "TCP",
+      "service": "HTTP",
+      "banner_grab": null,
+      "security_notes": "Unencrypted traffic allowed"
+    },
+    {
+      "port": 21,
+      "protocol": "TCP",
+      "service": "FTP",
+      "banner_grab": "Abierto y sin cifrar",
+      "security_notes": "CRITICAL: Credentials transmitted in plaintext"
+    }
+  ],
+  "tech_stack": [
+    {
+      "component": "Apache",
+      "version": "2.4.38",
+      "risk_flag": "End-of-Life (EOL)",
+      "cpe": "cpe:2.3:a:apache:http_server:2.4.38:*:*:*:*:*:*:*",
+      "associated_cves": ["CVE-2019-0211"]
+    },
+    {
+      "component": "OpenSSL",
+      "version": "1.0.2q",
+      "risk_flag": "End-of-Life (EOL)",
+      "cpe": "cpe:2.3:a:openssl:openssl:1.0.2q:*:*:*:*:*:*:*",
+      "associated_cves": ["CVE-2019-1547", "CVE-2019-1559", "CVE-2019-1563"]
+    },
+    {
+      "component": "PHP",
+      "version": "7.1.26",
+      "risk_flag": "End-of-Life (EOL)",
+      "cpe": "cpe:2.3:a:php:php:7.1.26:*:*:*:*:*:*:*",
+      "associated_cves": ["CVE-2019-11043"]
+    }
+  ],
+  "forensic_evidence": {
+    "whois_data": {
+      "organization": "Hospital Civil de Guadalajara",
+      "cidr": null,
+      "location": null
+    },
+    "exposed_secrets": [
+      "FTP credentials exposed due to lack of encryption"
+    ],
+    "config_flaws": [
+      "Information exposure in HTTP headers",
+      "Unencrypted FTP service",
+      "No security patches since 2019"
+    ],
+    "critical_artifacts": []
+  },
+  "exploitation_vectors": {
+    "privilege_level": "Unknown",
+    "attack_paths": [
+      "Exploitation of EOL web stack components",
+      "Credential sniffing via unencrypted FTP",
+      "Targeted attacks using version disclosure in headers"
+    ],
+    "recommended_cves": [
+      {
+        "cve_id": "CVE-2019-0211",
+        "type": "LPE",
+        "target": "Apache 2.4.38",
+        "exploit_path": "/exploits/CVE-2019-0211/"
+      },
+      {
+        "cve_id": "CVE-2019-11043",
+        "type": "RCE",
+        "target": "PHP 7.1.26 (PHP-FPM)",
+        "exploit_path": "/exploits/CVE-2019-11043/"
+      }
+    ]
+  },
+  "target_domains": [
+    "hcg.gob.mx",
+    "www.hcg.gob.mx",
+    "portal.hcg.gob.mx",
+    "mail.hcg.gob.mx",
+    "ftp.hcg.gob.mx"
+  ],
+  "scan_metadata": {
+    "scan_date": "2026-04-07",
+    "scanner_type": "infrastructure",
+    "assessment_scope": "external"
+  }
+}

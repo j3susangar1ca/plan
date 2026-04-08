@@ -1,0 +1,68 @@
+{
+  "$schema": "../../schemas/port-scan.schema.json",
+  "port": 53,
+  "protocol": "DNS",
+  "transport_protocol": "UDP",
+  "ip": "201.131.132.7",
+  "scan_time": "2026-04-08T02:04:12.429998321Z",
+  "misconfigs": [],
+  "exposures": [],
+  "vulns": [],
+  "software": [
+    {
+      "vendor": "microsoft",
+      "product": "dns",
+      "version": "6.1.7601",
+      "cpe": "cpe:2.3:a:microsoft:dns:6.1.7601:*:*:*:*:*:*:*"
+    }
+  ],
+  "hardware": [],
+  "operating_systems": [
+    {
+      "vendor": "microsoft",
+      "product": "windows_server_2008_r2",
+      "version": "",
+      "cpe": "cpe:2.3:o:microsoft:windows_server_2008:r2:*:*:*:*:*:*:*"
+    }
+  ],
+  "threats": [],
+  "labels": [],
+  "screenshots": [],
+  "dns": {
+    "version": "Microsoft DNS 6.1.7601 (1DB15F75)",
+    "server_type": "FORWARDING",
+    "resolves_correctly": true,
+    "r_code": "SUCCESS",
+    "edns": {
+      "version": 0,
+      "do": true,
+      "udp": 4000
+    },
+    "answers": [
+      {
+        "name": "ip.parrotdns.com.",
+        "response": "35.202.119.40",
+        "type": "A"
+      },
+      {
+        "name": "ip.parrotdns.com.",
+        "response": "201.131.132.202",
+        "type": "A"
+      }
+    ],
+    "questions": [
+      {
+        "name": "ip.parrotdns.com.",
+        "response": "ip.parrotdns.com.\tIN\t A",
+        "type": "A"
+      }
+    ]
+  },
+  "security_assessment": {
+    "risk_level": "low",
+    "findings": [
+      "DNS server responds to external queries",
+      "Version disclosure enabled"
+    ]
+  }
+}

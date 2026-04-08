@@ -1,0 +1,41 @@
+{
+  "$schema": "../../schemas/port-scan.schema.json",
+  "port": 500,
+  "protocol": "IKE",
+  "transport_protocol": "UDP",
+  "ip": "201.131.132.131",
+  "scan_time": "2026-04-07T18:39:26.57467243Z",
+  "misconfigs": [],
+  "exposures": [],
+  "vulns": [],
+  "software": [],
+  "hardware": [
+    {
+      "type": ["VPN", "NETWORK"],
+      "vendor": "",
+      "product": "",
+      "version": ""
+    }
+  ],
+  "operating_systems": [],
+  "threats": [],
+  "labels": [
+    {"value": "VPN"},
+    {"value": "NETWORK"}
+  ],
+  "screenshots": [],
+  "ike": {
+    "v2": {
+      "accepted_proposal": false,
+      "vendor_ids": [],
+      "notify_message_types": [14]
+    }
+  },
+  "security_assessment": {
+    "risk_level": "low",
+    "findings": [
+      "IKEv2 VPN endpoint detected",
+      "Connection requires further assessment for VPN vulnerabilities"
+    ]
+  }
+}
