@@ -1,7 +1,3 @@
---- cybersecurity_attack_model.py (原始)
-
-
-+++ cybersecurity_attack_model.py (修改后)
 #!/usr/bin/env python3
 """
 Modelo Matemático Formal para Simulación y Análisis de Ataques Informáticos
