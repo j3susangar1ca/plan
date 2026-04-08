@@ -1,0 +1,14 @@
+{
+  "$schema": "../../../../schemas/host-scan.schema.json",
+  "ip_address": "10.2.61.17",
+  "hostnames": ["srv-synhcgn"],
+  "network_zone": "Internal-Servers",
+  "roles": ["Nómina", "Payroll Processing"],
+  "open_ports": [
+    {"port": 3306, "protocol": "TCP", "service": "MySQL", "security_notes": "Filtered"}
+  ],
+  "exploitation_vectors": {
+    "risk_level": "ALTO",
+    "risk_justification": "Datos financieros sensibles, MySQL accesible"
+  }
+}

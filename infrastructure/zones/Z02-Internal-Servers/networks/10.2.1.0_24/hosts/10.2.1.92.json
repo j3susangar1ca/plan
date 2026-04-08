@@ -1,0 +1,29 @@
+{
+  "$schema": "../../../../schemas/host-scan.schema.json",
+  "ip_address": "10.2.1.92",
+  "hostnames": ["srv-smb"],
+  "network_zone": "Internal-Servers",
+  "os_info": "Windows Server",
+  "roles": ["File Server", "Compartición de Archivos Departamentales"],
+  "open_ports": [
+    {"port": 139, "protocol": "TCP", "service": "NetBIOS"},
+    {"port": 445, "protocol": "TCP", "service": "SMB"}
+  ],
+  "forensic_evidence": {
+    "smb_shares": [
+      "ADMIN$", "C$", "E$", "F$", "G$", "H$", "I$", "IPC$",
+      "020_Depto_Soporte", "060_Direccion", "11 UIG", "AlmacenFAA", "CAA_FAA", "CGRH_CV", 
+      "Coord.Administrativa-JIM", "Coord.Epidemio.Hospitalaria", "Coordinacion Juridico", 
+      "CoordinacionesAdministrativas-FAA-JIM", "Ctrol.Correspondencia.Vinculacion", 
+      "DIETOLOGIA_Y_NUT_FAA", "FAA_divserv_admvos", "FAA_SA", "FAAJIMHCO-Viveres", 
+      "FONSABI_farmacia_jim", "IngenieriaBiomedicaJIM", "INVESTIGACION_DE_MERCADO", 
+      "JIM_DivServ_Admvos", "NombramientoRH", "OftalmoFAA", "RH-JIM", "Serv3", 
+      "SubDir.Serv.Auxiliares-JIM", "SubDir.Serv.Dx.Tto._y_Param", "SubDireccionMedicaJIM", 
+      "TrabajoSocialJIM", "vinculacionhistorico2019-2022"
+    ]
+  },
+  "exploitation_vectors": {
+    "risk_level": "CRITICO",
+    "risk_justification": "37 comparticiones SMB accesibles, datos RH, médicos y farmacia"
+  }
+}
