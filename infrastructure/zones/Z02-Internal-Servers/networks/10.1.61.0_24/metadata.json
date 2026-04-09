@@ -1,9 +1,9 @@
 {
   "id": "S14",
   "cidr": "10.1.61.0/24",
-  "name": "SI-HCG Sincronización Veracruz",
+  "name": "Regional Site Sync Channel",
   "gateway": null,
   "dns_servers": [],
   "host_count": 1,
-  "description": "Canal de sincronización inter-sitio con Veracruz"
+  "description": "Canal de sincronización inter-sitio con Sede Regional"
 }

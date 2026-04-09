@@ -1,7 +1,7 @@
 {
   "$schema": "../../../../schemas/host-scan.schema.json",
   "ip_address": "10.2.1.165",
-  "hostnames": ["srv-certificados", "certificados.hcg.gob.mx"],
+  "hostnames": ["srv-certificados", "certificados.corp-infra.local"],
   "network_zone": "Internal-Servers",
   "roles": ["Certificados Digitales"],
   "open_ports": [],

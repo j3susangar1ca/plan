@@ -1,7 +1,7 @@
 {
   "id": "S02",
   "cidr": "10.2.61.0/24",
-  "name": "SYNHCGN Nómina",
+  "name": "Payroll Internal Sync",
   "gateway": null,
   "dns_servers": [],
   "host_count": 0,
