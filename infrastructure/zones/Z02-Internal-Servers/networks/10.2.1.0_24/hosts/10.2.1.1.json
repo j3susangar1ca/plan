@@ -2,11 +2,11 @@
   "$schema": "../../../../schemas/host-scan.schema.json",
   "ip_address": "10.2.1.1",
   "ipv4_addresses": ["10.2.1.1", "10.2.1.18"],
-  "hostnames": ["srv-opd-hcg-org", "opd-hcg.org"],
+  "hostnames": ["srv-corp-infra-org", "corp-infra.org"],
   "network_zone": "Internal-Servers",
   "os_info": "Windows Server",
   "roles": ["Domain Controller", "DNS Server", "LDAP Server"],
-  "active_domain": "opd-hcg.org",
+  "active_domain": "corp-infra.org",
   "open_ports": [
     {"port": 53, "protocol": "TCP/UDP", "service": "DNS"},
     {"port": 88, "protocol": "TCP/UDP", "service": "Kerberos"},
