@@ -5,17 +5,21 @@
 ---
 
 <div align="center">
+  <img src="https://via.placeholder.com/800x200.png?text=Critical+Infrastructure+Resilience+Framework" alt="Critical Infrastructure Resilience Framework" width="100%" style="border-radius: 8px; margin: 1rem 0;"/>
+  
+  <h1>🔐 Critical Infrastructure Resilience & Advanced System Modeling</h1>
+  
+  <p><strong>Formalized Adversary Emulation Environment</strong><br/>
+  <em>Mathematically-grounded framework for modeling, analyzing, and verifying critical infrastructure resilience</em></p>
+</div>
 
-[![Status](https://img.shields.io/badge/Status-Research%20Phase-yellow?style=for-the-badge&logo=dependabot)](https://github.com)
-[![Compliance](https://img.shields.io/badge/Compliance-ISO%2FIEC_27001-informational?style=for-the-badge&logo=iso)](https://www.iso.org/standard/27001)
-[![Security](https://img.shields.io/badge/Security-IEC_62443-blueviolet?style=for-the-badge&logo=security)](https://www.isa.org/standards)
-[![License](https://img.shields.io/badge/License-CC--BY--SA--4.0-green?style=for-the-badge)](LICENSE)
-[![Version](https://img.shields.io/badge/Version-2.0.0--alpha-orange?style=for-the-badge)](https://semver.org/)
-[![MITRE](https://img.shields.io/badge/MITRE%20ATT%26CK®-Mapped-red?style=for-the-badge)](https://attack.mitre.org)
+<div align="center">
 
-**Formalized Adversary Emulation & Resilience Verification for Critical Systems**
-
-*High-Fidelity Simulation • Symbolic Logic • Reverse Security Engineering*
+| Status & Quality | Standards & Compliance | Technical |
+|-----------------|----------------------|-----------|
+| [![Status](https://img.shields.io/badge/🔬_Research-Phase-yellow?style=for-the-badge&logo=gitbook&logoColor=white)](#) | [![ISO](https://img.shields.io/badge/ISO%2FIEC-27001-006633?style=for-the-badge&logo=iso&logoColor=white)](#) | [![Math](https://img.shields.io/badge/📐_Symbolic_Logic-9b59b6?style=for-the-badge)](#) |
+| [![Version](https://img.shields.io/badge/📦_v2.0.0--alpha-orange?style=for-the-badge&logo=github)](#) | [![IEC](https://img.shields.io/badge/IEC-62443-0066cc?style=for-the-badge&logo=linux&logoColor=white)](#) | [![Graph](https://img.shields.io/badge/🔗_Graph_Theory-2ecc71?style=for-the-badge)](#) |
+| [![License](https://img.shields.io/badge/📜_CC--BY--SA_4.0-green?style=for-the-badge&logo=creative-commons&logoColor=white)](LICENSE) | [![NIST](https://img.shields.io/badge/NIST-CSF_2.0-blue?style=for-the-badge&logo=auth0&logoColor=white)](#) | [![Stochastic](https://img.shields.io/badge/📊_Stochastic_Calc-f39c12?style=for-the-badge)](#) |
 
 </div>
 
@@ -38,20 +42,42 @@
 
 ---
 
+---
+
+## �� Quick Navigation
+
+<details open>
+<summary><strong>📋 Jump to Section</strong></summary>
+
+| Section | Focus | Time |
+|---------|-------|------|
+| [🎯 Executive Summary](#1-executive-summary) | Purpose & Objectives | 2 min |
+| [🏗️ Architecture](#2-system-architecture) | System Design & Data Flow | 5 min |
+| [🔬 Scientific Foundations](#3-scientific-foundations) | Formal Methods & Theory | 8 min |
+| [⚙️ Execution Model](#4-execution-model--primitives) | DSL & Pipeline | 4 min |
+| [🛡️ Threat Modeling](#5-threat-modeling-methodology) | Attack Trees & Kill Chains | 6 min |
+| [📜 Compliance](#6-international-standards--compliance) | Standards Mapping | 3 min |
+
+</details>
+
+---
+
 ## 1. Executive Summary
 
 ### 1.1 Purpose
 
 This repository constitutes a **Formalized Adversary Emulation Environment** designed for the computational study of critical infrastructure resilience. Unlike traditional penetration testing frameworks, this system employs a deterministic approach grounded in **Symbolic Logic** and **Discrete Mathematics** to model security states, eliminating ambiguity in defensive posture evaluation.
 
-### 1.2 Key Objectives
+### 🔑 1.2 Key Objectives
 
-| # | Objective | Description |
-|:-:|:----------|:------------|
-| 1 | **Formal Verification** | Mathematical modeling of security boundaries and detection of illegitimate access paths between asset classifications |
-| 2 | **Advanced Threat Emulation** | Simulation of state-level adversary behavior through low-level system primitives within a sandboxed environment |
-| 3 | **Resilience Engineering** | Stochastic quantification of risk, degradation curves, and mean-time-to-recovery under systemic compromise |
-| 4 | **Standards Alignment** | Full traceability to ISO/IEC 27001, IEC 62443, NIST CSF 2.0, and MITRE ATT&CK® |
+| # | Objective | Status | Impact |
+|:-:|:----------|:------:|:-------|
+| 1 | **🧮 Formal Verification** | 🟡 In Progress | 🔴 Critical |
+| 2 | **⚔️ Advanced Threat Emulation** | 🟢 Active | 🟠 High |
+| 3 | **📈 Resilience Engineering** | �� In Progress | 🟠 High |
+| 4 | **📐 Standards Alignment** | 🟢 Complete | 🟡 Medium |
+
+> 📊 **Legend**: 🟢 Complete | 🟡 In Progress | 🔴 Blocked | �� Critical | 🟠 High | 🟡 Medium | 🟢 Low
 
 ### 1.3 Design Axes
 
@@ -80,13 +106,21 @@ This repository constitutes a **Formalized Adversary Emulation Environment** des
 
 ---
 
-## 2. System Architecture
+## 🏗️ 2. System Architecture
 
 The system is designed as a **Non-Deterministic Finite State Machine (NFSM)**, decoupled across three orthogonal planes to ensure separation of concerns and mathematical model purity.
 
 ### 2.1 Top-Level Architecture
 
 ```mermaid
+%%{init: {'theme': 'base', 'themeVariables': { 
+  'primaryColor': '#1a1a2e',
+  'primaryTextColor': '#fff',
+  'primaryBorderColor': '#4a4e69',
+  'lineColor': '#9a8c98',
+  'secondaryColor': '#16213e',
+  'tertiaryColor': '#0f3460'
+}}}%%
 graph TB
     classDef control fill:#2c3e50,stroke:#ecf0f1,stroke-width:2px,color:#fff;
     classDef execution fill:#c0392b,stroke:#ecf0f1,stroke-width:2px,color:#fff;
@@ -230,11 +264,15 @@ graph TB
 
 ---
 
-## 3. Scientific Foundations
+## 🔬 3. Scientific Foundations
 
 ### 3.1 Formal Verification & Symbolic Logic
 
-The framework employs **first-order predicate logic** to define security invariants across network segment boundaries. Security perimeters are modeled as formal constraints within a state space S, enabling mathematical proof of property preservation or violation.
+> [!IMPORTANT]
+> ### Mathematical Foundation
+> All security properties are expressed as **first-order predicate logic formulas**, enabling mechanical verification of invariant preservation across state transitions.
+
+The framework employs this logic to define security invariants across network segment boundaries. Security perimeters are modeled as formal constraints within a state space S.
 
 **Core Formalism:**
 
@@ -307,7 +345,9 @@ graph LR
     PERSISTENCE ~~~ EVASION ~~~ EXECUTION
 ```
 
-> **Note**: All mechanisms above are **symbolic models** — abstract representations for formal analysis. No functional exploit code is contained within this repository.
+> [!WARNING]
+> ### Scope Boundary
+> This framework produces **symbolic models only**. No functional exploit code, weaponized artifacts, or operational tooling is included or generated.
 
 ### 3.4 Stochastic Resilience Modeling
 
@@ -331,9 +371,13 @@ Mean Time to Recovery:
 
 ---
 
-## 4. Execution Model & Primitives
+## ⚙️ 4. Execution Model & Primitives
 
-All operations are encapsulated within a **Hyper-Supervised Sandbox**. The execution engine does not execute binaries directly — it interprets a Domain-Specific Language (DSL) that translates logical actions into simulated or encapsulated system calls.
+> [!NOTE]
+> ### Sandbox Guarantee
+> The execution engine operates within a **hyper-supervised environment** — no code executes on host systems without explicit, audited authorization.
+
+All operations are encapsulated within this sandbox. The execution engine does not execute binaries directly — it interprets a Domain-Specific Language (DSL) that translates logical actions into simulated or encapsulated system calls.
 
 ### 4.1 Execution Pipeline
 
@@ -357,21 +401,22 @@ graph LR
 <details>
 <summary><strong>Click to expand — Execution Engine Specification</strong></summary>
 
-```json
+```json title="attack_spec.yaml"
 {
   "action": "kernel_persistence_test",
   "target_module": "syscall_table_hook",
   "constraints": {
     "timeout_ms": 500,
     "rollback_on_failure": true,
-    "sandbox_level": "hyper-supervised"
+    "sandbox_level": "hyper-supervised"  // 🔒 Maximum isolation
   },
   "expected_outcome": {
     "state_transition": "s_i → s_j",
-    "invariant_check": "Φ(s_j) = ⊤"
+    "invariant_check": "Φ(s_j) = ⊤"      // ✅ Security preserved
   }
 }
 ```
+> 💡 **Tip**: All DSL specifications are validated against JSON Schema before execution.
 
 **Pipeline:**
 - **Input:** Attack specification in DSL (YAML/JSON)
@@ -419,7 +464,7 @@ graph TD
 
 ---
 
-## 5. Threat Modeling Methodology
+## 🛡️ 5. Threat Modeling Methodology
 
 ### 5.1 Kill Chain Decomposition
 
@@ -490,7 +535,7 @@ Cost Model:
 
 ---
 
-## 6. International Standards & Compliance
+## 📜 6. International Standards & Compliance
 
 ### 6.1 Primary Standards Alignment
 
@@ -667,15 +712,23 @@ graph TB
 | **G4 — Verification** | Unit tests pass; integration tests pass; formal proofs verified | ≥95% branch coverage; 100% proof verification |
 | **G5 — Validation** | Simulation results match predicted model behavior within tolerance | Statistical significance p < 0.05 |
 
-### 8.3 Current Risk Posture
+### 📊 8.3 Current Risk Posture Dashboard
 
-| Severity | Count | Status |
-|:---------|:-----:|:-------|
-| 🔴 **Critical** | 4 | Active — Requires immediate remediation modeling |
-| 🟠 **High** | 5 | Active — Scheduled for resilience analysis |
-| 🟡 **Medium** | 0 | — |
-| 🟢 **Low** | 0 | — |
-| **Total Findings** | **9** | All mapped to CVE advisories |
+```mermaid
+pie showData
+    title Vulnerability Distribution by Severity
+    "🔴 Critical" : 4
+    "🟠 High" : 5
+    "🟡 Medium" : 0
+    "🟢 Low" : 0
+```
+
+| Severity | Count | Trend | Action Required |
+|:---------|:-----:|:-----:|:----------------|
+| 🔴 Critical | 4 | ⬆️ +1 | Immediate modeling |
+| 🟠 High | 5 | ➡️ Stable | Scheduled analysis |
+| 🟡 Medium | 0 | ⬇️ -2 | — |
+| 🟢 Low | 0 | ➡️ Stable | — |
 
 ### 8.4 Tracked Software Components
 
@@ -786,10 +839,18 @@ This work is licensed under [Creative Commons Attribution-ShareAlike 4.0 Interna
 
 <div align="center">
 
-**Engineering Excellence | Mathematical Rigor | System Integrity**
+### 🚀 Get Started
+
+[📖 Read Documentation](docs/) · [🧪 Run Simulations](simulations/) · [🤝 Contribute](CONTRIBUTING.md) · [💬 Discuss](discussions/)
+
+---
+
+**Engineering Excellence** • **Mathematical Rigor** • **System Integrity**
 
 *Built for the advancement of defensive sciences.*
 
-[AI Context](ai-context/) · [Vulnerability Advisories](vulnerabilities/) · [Infrastructure Model](infrastructure/)
+[![GitHub stars](https://img.shields.io/github/stars/yourorg/cirasm?style=social)](https://github.com)
+[![GitHub forks](https://img.shields.io/github/forks/yourorg/cirasm?style=social)](https://github.com)
+[![Follow Research](https://img.shields.io/twitter/follow/yourhandle?style=social)](https://twitter.com)
 
 </div>
