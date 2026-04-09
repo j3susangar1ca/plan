@@ -1,132 +1,535 @@
 {
   "$schema": "../schemas/host-scan.schema.json",
+  "_meta": {
+    "version": "2.1.0",
+    "updated": "2026-04-09",
+    "classification": "CONFIDENTIAL",
+    "parent_docs": [
+      "strategic-execution.md",
+      "project-summary.md",
+      "exploitation-graph.md"
+    ],
+    "notes": "Machine-readable attack surface model. All identifiers are internal symbolic tokens for theoretical simulation."
+  },
   "target": {
     "organization": "Corporativo Global de Infraestructura",
+    "primary_domain": "corp-infra.local",
     "primary_host": "201.131.132.131",
-    "network_zone": "Z01-DMZ"
+    "ip_range": "201.131.132.0/24",
+    "assessment_type": "Red Team Simulation — Theoretical",
+    "classification": "CONFIDENTIAL"
   },
-  "attack_surface": {
-    "network_services": [
-      {
-        "port": 21,
-        "protocol": "FTP",
-        "transport": "TCP",
-        "risk": "high",
-        "finding": "Unencrypted credentials transmission",
-        "exploitation": "Passive credential sniffing"
-      },
-      {
-        "port": 80,
-        "protocol": "HTTP",
-        "transport": "TCP",
-        "risk": "medium",
-        "finding": "Redirects to external IP",
-        "exploitation": "Man-in-the-middle potential"
-      },
-      {
-        "port": 443,
-        "protocol": "HTTPS",
-        "transport": "TCP",
-        "risk": "critical",
-        "finding": "EOL OpenSSL with known vulnerabilities",
-        "exploitation": "CVE-2019-1547, CVE-2019-1559, CVE-2019-1563"
-      },
-      {
-        "port": 500,
-        "protocol": "IKE",
-        "transport": "UDP",
-        "risk": "low",
-        "finding": "VPN endpoint detected",
-        "exploitation": "IKE aggressive mode enumeration"
-      }
-    ],
-    "web_stack": {
-      "server": {
-        "name": "Apache",
-        "version": "2.4.38",
-        "status": "EOL",
-        "critical_cves": ["CVE-2019-0211", "CVE-2016-1240"]
-      },
-      "runtime": {
-        "name": "PHP",
-        "version": "7.1.26",
-        "status": "EOL",
-        "critical_cves": ["CVE-2019-11043", "CVE-2021-21703"]
-      },
-      "crypto": {
-        "name": "OpenSSL",
-        "version": "1.0.2q",
-        "status": "EOL",
-        "critical_cves": ["CVE-2019-1547", "CVE-2019-1559", "CVE-2019-1563"]
-      },
-      "system": {
-        "name": "Polkit",
-        "version": "0.105",
-        "status": "Vulnerable",
-        "critical_cves": ["CVE-2021-4034"]
-      }
+  "network_zones": [
+    {
+      "zone_id": "Z01",
+      "designation": "DMZ — External Servers",
+      "risk_level": "CRITICAL",
+      "host_count": 5,
+      "subnet": "201.131.132.0/24",
+      "characteristics": "Apache 2.4.38, PHP 7.1.26, OpenSSL 1.0.2q — all EOL"
     },
-    "exploitation_chains": [
-      {
-        "name": "PwnKit Root",
-        "steps": [
-          {
-            "step": 1,
-            "action": "Execute linux_pwnkit_lpe_cve_2021_4034.c",
-            "cve": "CVE-2021-4034",
-            "result": "Immediate root shell"
-          }
-        ],
-        "final_access": "root"
-      },
-      {
-        "name": "Web-to-Root",
-        "steps": [
-          {
-            "step": 1,
-            "action": "Upload PHP exploit via FTP or web vulnerability",
-            "cve": null,
-            "result": "Code placement on server"
-          },
-          {
-            "step": 2,
-            "action": "Trigger CVE-2019-0211 via HTTP request",
-            "cve": "CVE-2019-0211",
-            "result": "Shared memory manipulation"
-          },
-          {
-            "step": 3,
-            "action": "Wait for Apache graceful restart",
-            "cve": null,
-            "result": "Root payload execution"
-          }
-        ],
-        "final_access": "root"
-      },
-      {
-        "name": "PHP-FPM RCE",
-        "steps": [
-          {
-            "step": 1,
-            "action": "Deploy Metasploit module",
-            "cve": "CVE-2019-11043",
-            "result": "Remote code execution"
-          },
-          {
-            "step": 2,
-            "action": "Establish reverse shell",
-            "cve": null,
-            "result": "www-data shell"
-          },
-          {
-            "step": 3,
-            "action": "Optional: CVE-2019-0211 escalation",
-            "cve": "CVE-2019-0211",
-            "result": "root shell"
-          }
-        ],
-        "final_access": "www-data or root"
-      }
-    ]
+    {
+      "zone_id": "Z02",
+      "designation": "Internal Servers",
+      "risk_level": "CRITICAL",
+      "host_count": 10,
+      "subnets": ["10.2.1.0/24", "10.2.22.0/24", "10.1.61.0/24"],
+      "characteristics": "AD exposed, SMB 37 shares unaudited, RDP open, MySQL leaked"
+    },
+    {
+      "zone_id": "Z03",
+      "designation": "Corporate Workstations",
+      "risk_level": "MEDIUM",
+      "host_count": 83,
+      "characteristics": "Unencrypted VoIP/WebRTC, unidentified OUIs"
+    },
+    {
+      "zone_id": "Z04",
+      "designation": "Corporate WiFi",
+      "risk_level": "HIGH",
+      "host_count": 8,
+      "subnet": "10.254.0.0/16",
+      "characteristics": "WPA2-Personal shared key, LDAP from WiFi to DC, AJP13 exposed"
+    },
+    {
+      "zone_id": "Z05",
+      "designation": "Virtual Networks",
+      "risk_level": "MEDIUM",
+      "host_count": 0,
+      "characteristics": "Production overlap, Docker on WiFi, ICS unsegmented"
+    },
+    {
+      "zone_id": "Z06",
+      "designation": "External / ISP",
+      "risk_level": "LOW",
+      "host_count": 0,
+      "characteristics": "Outside direct control"
+    },
+    {
+      "zone_id": "Z07",
+      "designation": "Monitoring",
+      "risk_level": "MEDIUM",
+      "host_count": 0,
+      "subnet": "10.1.97.0/24",
+      "characteristics": "ICMP TTL=255, potential leakage"
+    },
+    {
+      "zone_id": "Z08",
+      "designation": "Subnet 10.2.4.0/24",
+      "risk_level": "MEDIUM",
+      "host_count": 0,
+      "subnet": "10.2.4.0/24",
+      "characteristics": "Unknown purpose, no host inventory"
+    },
+    {
+      "zone_id": "Z09",
+      "designation": "DMZ OPD — IoT/Cameras",
+      "risk_level": "HIGH",
+      "host_count": 0,
+      "characteristics": "Ubiquiti IoT devices, surveillance cameras"
+    },
+    {
+      "zone_id": "Z10",
+      "designation": "Docker Network",
+      "risk_level": "HIGH",
+      "host_count": 0,
+      "subnet": "10.254.178.0/24",
+      "characteristics": "Docker containers on corporate WiFi without segmentation"
+    }
+  ],
+  "critical_hosts": [
+    {
+      "ip": "201.131.132.131",
+      "zone": "Z01",
+      "role": "Primary target — web server",
+      "os_stack": "Apache 2.4.38 / PHP 7.1.26 / OpenSSL 1.0.2q",
+      "risk": "CRITICAL",
+      "services": [
+        {"port": 21, "protocol": "FTP", "transport": "TCP"},
+        {"port": 80, "protocol": "HTTP", "transport": "TCP"},
+        {"port": 443, "protocol": "HTTPS", "transport": "TCP"},
+        {"port": 500, "protocol": "IKE", "transport": "UDP"}
+      ]
+    },
+    {
+      "ip": "201.131.132.7",
+      "zone": "Z01",
+      "role": "Secondary target — DNS/IIS",
+      "os_stack": "Windows Server 2008 R2 / IIS 7.5 / Microsoft DNS 6.1.7601",
+      "risk": "HIGH",
+      "services": [
+        {"port": 80, "protocol": "HTTP", "transport": "TCP"},
+        {"port": 53, "protocol": "DNS", "transport": "UDP"},
+        {"port": 53413, "protocol": "NETIS", "transport": "UDP"}
+      ]
+    },
+    {
+      "ip": "216.245.211.42",
+      "zone": "Z01",
+      "role": "Unknown exposure",
+      "risk": "UNKNOWN"
+    },
+    {
+      "ip": "10.2.1.1",
+      "zone": "Z02",
+      "role": "Internal gateway — potential pivot",
+      "risk": "HIGH"
+    }
+  ],
+  "network_services": [
+    {
+      "port": 21,
+      "protocol": "FTP",
+      "transport": "TCP",
+      "host": "201.131.132.131",
+      "zone": "Z01",
+      "risk": "high",
+      "finding": "Unencrypted credential transmission",
+      "exploitation": "Passive credential sniffing",
+      "mitre_techniques": ["T1557", "T1078"]
+    },
+    {
+      "port": 80,
+      "protocol": "HTTP",
+      "transport": "TCP",
+      "host": "201.131.132.131",
+      "zone": "Z01",
+      "risk": "medium",
+      "finding": "Redirects to external IP (187.241.167.211)",
+      "exploitation": "Man-in-the-middle potential, HTTP redirect chain"
+    },
+    {
+      "port": 80,
+      "protocol": "HTTP",
+      "transport": "TCP",
+      "host": "201.131.132.7",
+      "zone": "Z01",
+      "risk": "medium",
+      "finding": "IIS 7.5, redirect chain to /utsyn/glogin.aspx",
+      "exploitation": "Application fingerprint, potential web app vulnerability"
+    },
+    {
+      "port": 443,
+      "protocol": "HTTPS",
+      "transport": "TCP",
+      "host": "201.131.132.131",
+      "zone": "Z01",
+      "risk": "critical",
+      "finding": "EOL OpenSSL 1.0.2q with known CVEs",
+      "exploitation": "CVE-2019-1547, CVE-2019-1559, CVE-2019-1563",
+      "mitre_techniques": ["T1557.002"]
+    },
+    {
+      "port": 500,
+      "protocol": "IKE",
+      "transport": "UDP",
+      "host": "201.131.132.131",
+      "zone": "Z01",
+      "risk": "low",
+      "finding": "IKEv2 VPN endpoint detected",
+      "exploitation": "Aggressive mode enumeration",
+      "mitre_techniques": ["T1133", "T1595.001"]
+    },
+    {
+      "port": 53,
+      "protocol": "DNS",
+      "transport": "UDP",
+      "host": "201.131.132.7",
+      "zone": "Z01",
+      "risk": "medium",
+      "finding": "Microsoft DNS 6.1.7601, version disclosure enabled",
+      "exploitation": "DNS zone transfer, version-based CVE targeting",
+      "mitre_techniques": ["T1590.002", "T1572"]
+    },
+    {
+      "port": 53413,
+      "protocol": "NETIS",
+      "transport": "UDP",
+      "host": "201.131.132.7",
+      "zone": "Z01",
+      "risk": "critical",
+      "finding": "NETIS router backdoor port (CVE-2014-9016)",
+      "exploitation": "Unauthenticated device access",
+      "mitre_techniques": ["T1190"]
+    }
+  ],
+  "web_stack": {
+    "server": {
+      "name": "Apache HTTP Server",
+      "version": "2.4.38",
+      "status": "EOL",
+      "cves": ["CVE-2019-0211", "CVE-2019-10081"],
+      "priority": ["P1", "P2"]
+    },
+    "runtime": {
+      "name": "PHP",
+      "version": "7.1.26",
+      "status": "EOL",
+      "cves": ["CVE-2019-11043", "CVE-2021-21703"],
+      "priority": ["P0", "P1"]
+    },
+    "crypto": {
+      "name": "OpenSSL",
+      "version": "1.0.2q",
+      "status": "EOL",
+      "cves": ["CVE-2019-1547", "CVE-2019-1559", "CVE-2019-1563"],
+      "priority": ["P3", "P3", "P3"]
+    },
+    "system": {
+      "name": "Polkit",
+      "version": "0.105",
+      "status": "Vulnerable",
+      "cves": ["CVE-2021-4034"],
+      "priority": ["P0"]
+    }
+  },
+  "vulnerabilities": [
+    {
+      "cve_id": "CVE-2021-4034",
+      "priority": "P0",
+      "type": "LPE",
+      "cvss_v3": 7.8,
+      "component": "Polkit 0.105 (pkexec)",
+      "reliability": "100%",
+      "prerequisite": "Local shell (any user)",
+      "enables": "root shell",
+      "phase": 3,
+      "mitre_techniques": ["T1068", "T1548"],
+      "advisory_path": "../vulnerabilities/CVE-2021-4034/advisory.md"
+    },
+    {
+      "cve_id": "CVE-2019-11043",
+      "priority": "P0",
+      "type": "RCE",
+      "cvss_v3": 9.8,
+      "component": "PHP 7.1.26 (PHP-FPM)",
+      "reliability": "High",
+      "prerequisite": "Network access, fastcgi_split_path_info config",
+      "enables": "www-data shell",
+      "phase": 2,
+      "mitre_techniques": ["T1190"],
+      "advisory_path": "../vulnerabilities/CVE-2019-11043/advisory.md"
+    },
+    {
+      "cve_id": "CVE-2019-0211",
+      "priority": "P1",
+      "type": "LPE",
+      "cvss_v3": 9.8,
+      "component": "Apache 2.4.38 (MPM prefork)",
+      "reliability": "87-95%",
+      "prerequisite": "www-data shell, Apache graceful restart trigger",
+      "enables": "root via shared memory hijack",
+      "phase": 3,
+      "mitre_techniques": ["T1068", "T1055"],
+      "advisory_path": "../vulnerabilities/CVE-2019-0211/advisory.md"
+    },
+    {
+      "cve_id": "CVE-2021-21703",
+      "priority": "P1",
+      "type": "RCE/LPE",
+      "cvss_v3": 9.8,
+      "component": "PHP 7.x (openssl_seal UAF)",
+      "reliability": "High",
+      "prerequisite": "PHP with OpenSSL extension",
+      "enables": "Code execution (remote or local)",
+      "phase": 2,
+      "mitre_techniques": ["T1190", "T1068"],
+      "advisory_path": "../vulnerabilities/CVE-2021-21703/advisory.md"
+    },
+    {
+      "cve_id": "CVE-2016-1240",
+      "priority": "P2",
+      "type": "LPE",
+      "cvss_v3": 7.8,
+      "component": "Tomcat 6/7/8 (Debian packaging)",
+      "reliability": "High",
+      "prerequisite": "Local shell, Tomcat installed via apt, logrotate trigger",
+      "enables": "root via file overwrite",
+      "phase": 3,
+      "mitre_techniques": ["T1068"],
+      "advisory_path": "../vulnerabilities/CVE-2016-1240/advisory.md"
+    },
+    {
+      "cve_id": "CVE-2019-10081",
+      "priority": "P2",
+      "type": "DoS",
+      "cvss_v3": 7.5,
+      "component": "Apache mod_http2",
+      "reliability": "N/A (DoS only)",
+      "prerequisite": "Network access to HTTP/2",
+      "enables": "Service disruption",
+      "phase": null,
+      "mitre_techniques": [],
+      "advisory_path": "../vulnerabilities/CVE-2019-10081/advisory.md"
+    },
+    {
+      "cve_id": "CVE-2019-1559",
+      "priority": "P3",
+      "type": "Information Disclosure",
+      "cvss_v3": 5.9,
+      "component": "OpenSSL 1.0.2q (SSLv3 CBC)",
+      "reliability": "Theoretical",
+      "prerequisite": "Network access, SSLv3 enabled",
+      "enables": "Partial plaintext recovery",
+      "phase": 1,
+      "mitre_techniques": ["T1557.002"],
+      "advisory_path": "../vulnerabilities/CVE-2019-1559/advisory.md"
+    },
+    {
+      "cve_id": "CVE-2019-1547",
+      "priority": "P3",
+      "type": "Side-Channel",
+      "cvss_v3": 5.3,
+      "component": "OpenSSL ECDSA timing",
+      "reliability": "Theoretical",
+      "prerequisite": "Network access, repeated ECDSA signing operations",
+      "enables": "Private key bit leakage",
+      "phase": 1,
+      "mitre_techniques": [],
+      "advisory_path": "../vulnerabilities/CVE-2019-1547/advisory.md"
+    },
+    {
+      "cve_id": "CVE-2019-1563",
+      "priority": "P3",
+      "type": "Cache Timing",
+      "cvss_v3": 5.3,
+      "component": "OpenSSL AES-NI",
+      "reliability": "Theoretical",
+      "prerequisite": "Co-located VM, shared CPU cache",
+      "enables": "AES key recovery",
+      "phase": 1,
+      "mitre_techniques": [],
+      "advisory_path": "../vulnerabilities/CVE-2019-1563/advisory.md"
+    }
+  ],
+  "exploitation_chains": [
+    {
+      "chain_id": "A",
+      "name": "PHP-FPM RCE → PwnKit / CARPE DIEM (Web-to-Root)",
+      "entry_vector": "CVE-2019-11043",
+      "final_access": "root",
+      "reliability": "HIGH",
+      "duration_hours": {"min": 1, "max": 6},
+      "mitre_attack_ids": ["T1190", "T1059.004", "T1068"],
+      "steps": [
+        {"step": 1, "action": "Deploy CVE-2019-11043 via crafted URI", "cve": "CVE-2019-11043", "result": "www-data shell"},
+        {"step": 2, "action": "Attempt PwnKit escalation", "cve": "CVE-2021-4034", "result": "root shell (100%)"},
+        {"step": 2b, "action": "Fallback: CARPE DIEM (if PwnKit fails)", "cve": "CVE-2019-0211", "result": "root shell (87-95%)"},
+        {"step": 2c, "action": "Fallback: Tomcat LPE", "cve": "CVE-2016-1240", "result": "root shell (HIGH)"}
+      ]
+    },
+    {
+      "chain_id": "B",
+      "name": "PwnKit Direct (Local → Root)",
+      "entry_vector": "Local shell (any user)",
+      "final_access": "root",
+      "reliability": "100%",
+      "duration_hours": {"min": 0, "max": 0},
+      "mitre_attack_ids": ["T1548", "T1068"],
+      "steps": [
+        {"step": 1, "action": "Execute PwnKit exploit on pkexec", "cve": "CVE-2021-4034", "result": "Immediate root shell"}
+      ]
+    },
+    {
+      "chain_id": "C",
+      "name": "PHP OpenSSL UAF → Root (JOP Chain)",
+      "entry_vector": "CVE-2021-21703",
+      "final_access": "root",
+      "reliability": "HIGH",
+      "duration_hours": {"min": 1, "max": 4},
+      "mitre_attack_ids": ["T1190", "T1068"],
+      "steps": [
+        {"step": 1, "action": "Trigger openssl_seal() UAF via network request", "cve": "CVE-2021-21703", "result": "Heap corruption"},
+        {"step": 2, "action": "Execute JOP chain for code execution", "cve": "CVE-2021-21703", "result": "Code execution"},
+        {"step": 3, "action": "Optional: PwnKit for guaranteed root", "cve": "CVE-2021-4034", "result": "root shell"}
+      ]
+    },
+    {
+      "chain_id": "D",
+      "name": "FTP Sniff → Web Shell → Root",
+      "entry_vector": "Passive FTP credential interception",
+      "final_access": "root",
+      "reliability": "HIGH",
+      "duration_hours": {"min": 2, "max": 8},
+      "mitre_attack_ids": ["T1557", "T1078", "T1505.003"],
+      "steps": [
+        {"step": 1, "action": "Capture FTP credentials on port 21", "cve": null, "result": "Username + password"},
+        {"step": 2, "action": "Upload PHP web shell via FTP", "cve": null, "result": "www-data shell"},
+        {"step": 3, "action": "Escalate via PwnKit or CARPE DIEM", "cve": "CVE-2021-4034", "result": "root shell"}
+      ]
+    },
+    {
+      "chain_id": "E",
+      "name": "Network-Level (VPN / DNS / NETIS)",
+      "entry_vector": "IKEv2 / DNS / NETIS backdoor",
+      "final_access": "varies (device access, VPN, DNS tunnel)",
+      "reliability": "MEDIUM",
+      "duration_hours": {"min": 4, "max": 12},
+      "mitre_attack_ids": ["T1133", "T1572", "T1190", "T1071.004"],
+      "steps": [
+        {"step": 1, "action": "IKEv2 aggressive mode enumeration", "cve": null, "result": "VPN config recovery"},
+        {"step": 1b, "action": "DNS forwarding exploitation", "cve": null, "result": "DNS tunnel channel"},
+        {"step": 1c, "action": "NETIS backdoor access", "cve": "CVE-2014-9016", "result": "IoT device access"}
+      ]
+    },
+    {
+      "chain_id": "F",
+      "name": "CARPE DIEM Direct (Apache UAF → Root)",
+      "entry_vector": "www-data shell via any vector",
+      "final_access": "root",
+      "reliability": "87-95%",
+      "duration_hours": {"min": 0.1, "max": 6},
+      "mitre_attack_ids": ["T1068", "T1055"],
+      "steps": [
+        {"step": 1, "action": "Trigger Apache bucket index UAF", "cve": "CVE-2019-0211", "result": "Shared memory write"},
+        {"step": 2, "action": "Wait for Apache graceful restart", "cve": null, "result": "Function pointer hijack → root"}
+      ]
+    }
+  ],
+  "lateral_movement_paths": [
+    {
+      "source_zone": "Z01",
+      "target_zone": "Z02",
+      "vectors": ["SMB relay / Pass-the-Hash", "RDP lateral movement", "MySQL unauthenticated access"],
+      "goal": "AD domain compromise",
+      "mitre_techniques": ["T1021.002", "T1021.001", "T1078", "T1550"]
+    },
+    {
+      "source_zone": "Z01",
+      "target_zone": "Z04",
+      "vectors": ["WPA2-Personal cracking", "LDAP bind to DC", "AJP13 exploitation"],
+      "goal": "Domain Controller access",
+      "mitre_techniques": ["T1021.004", "T1190"]
+    },
+    {
+      "source_zone": "Z01",
+      "target_zone": "Z09",
+      "vectors": ["Ubiquiti device enumeration", "Surveillance system access"],
+      "goal": "Physical security intelligence",
+      "mitre_techniques": ["T1595", "T1190"]
+    },
+    {
+      "source_zone": "Z01",
+      "target_zone": "Z10",
+      "vectors": ["Container escape via misconfigured volumes", "Privileged container exploitation"],
+      "goal": "Host-level access via Docker",
+      "mitre_techniques": ["T1611"]
+    },
+    {
+      "source_zone": "Z01",
+      "target_zone": "Z07",
+      "vectors": ["Monitoring system subversion", "ICMP analysis"],
+      "goal": "Blind the detection layer",
+      "mitre_techniques": ["T1562.001"]
+    }
+  ],
+  "c2_channels": [
+    {
+      "name": "DNS tunneling",
+      "protocol": "UDP",
+      "port": 53,
+      "host": "201.131.132.7",
+      "bandwidth": "low",
+      "mitre_technique": "T1572",
+      "notes": "Existing forwarding server, legitimate traffic pattern"
+    },
+    {
+      "name": "HTTPS callback",
+      "protocol": "TCP",
+      "port": 443,
+      "host": "201.131.132.131",
+      "bandwidth": "high",
+      "mitre_technique": "T1071.001",
+      "notes": "Encrypted, blends with normal web traffic"
+    },
+    {
+      "name": "ICMP covert channel",
+      "protocol": "ICMP",
+      "port": null,
+      "host": "all",
+      "bandwidth": "very_low",
+      "mitre_technique": "T1095",
+      "notes": "Data embedded in ICMP echo payloads"
+    }
+  ],
+  "risk_summary": {
+    "critical": 4,
+    "high": 5,
+    "medium": 0,
+    "low": 0,
+    "informational": 1,
+    "total_findings": 9
+  },
+  "mitre_attack_coverage": {
+    "reconnaissance": ["T1595", "T1595.001", "T1595.002", "T1590.001", "T1590.002", "T1592"],
+    "initial_access": ["T1190", "T1078", "T1133"],
+    "execution": ["T1059.004"],
+    "persistence": ["T1098.004", "T1053.003", "T1543.002", "T1505.003", "T1574.006"],
+    "privilege_escalation": ["T1068", "T1548"],
+    "defense_evasion": ["T1070.002", "T1070.004", "T1070.006", "T1014", "T1562.001", "T1620"],
+    "lateral_movement": ["T1021.001", "T1021.002", "T1021.004", "T1550"],
+    "collection": ["T1557", "T1557.002"],
+    "command_and_control": ["T1071.001", "T1071.004", "T1095", "T1572", "T1573.002"],
+    "exfiltration": ["T1572"]
   }
 }
