@@ -9,6 +9,6 @@
   ],
   "exploitation_vectors": {
     "risk_level": "INFO",
-    "risk_justification": "Infraestructura externa fuera del control administrativo de HCG"
+    "risk_justification": "Infraestructura externa fuera del control administrativo de la Organización"
   }
 }
