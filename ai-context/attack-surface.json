@@ -1,7 +1,7 @@
 {
   "$schema": "../schemas/host-scan.schema.json",
   "target": {
-    "organization": "Hospital Civil de Guadalajara",
+    "organization": "Corporativo Global de Infraestructura",
     "primary_host": "201.131.132.131",
     "network_zone": "Z01-DMZ"
   },
