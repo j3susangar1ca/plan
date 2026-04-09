@@ -3,9 +3,11 @@
 ## Formalized Adversary Emulation: Strategic Execution Plan & Language Selection Matrix
 
 **Classification**: Theoretical Simulation Environment  
-**Target Organization**: Corporativo Global de Infraestructura (Simulado teorico)
+**Target Organization**: Corporativo Global de Infraestructura (Simulado teórico)  
 **Primary Domain**: `corp-infra.local`  
-**Scope**: Computational Resilience Engineering
+**Scope**: Computational Resilience Engineering  
+**Version**: 2.1.0  
+**Last Updated**: 2026-04-09
 
 ---
 
@@ -23,6 +25,10 @@
    - [Phase 5 — Anti-Forensics & Evasion](#55-phase-5--anti-forensics--evasion)
 6. [Language Selection Methodology](#6-language-selection-methodology)
 7. [Integrated Execution Matrix](#7-integrated-execution-matrix)
+8. [Execution Timeline & Resource Model](#8-execution-timeline--resource-model)
+9. [Contingency Planning & Abort Criteria](#9-contingency-planning--abort-criteria)
+10. [Operational Metrics & KPIs](#10-operational-metrics--kpis)
+11. [MITRE ATT&CK® Technique Mapping](#11-mitre-attck-technique-mapping)
 
 ---
 
@@ -201,9 +207,15 @@ Informational:          ████                      1  (CVE-2014-9016)
 
 ## 5. Strategic Execution Plan
 
+> **Execution Doctrine**: Each phase follows a fail-fast methodology with clearly defined success criteria, abort conditions, and fallback paths. No phase proceeds without validated prerequisites from the preceding phase.
+
 ### 5.1 Phase 1 — External Reconnaissance
 
 **Objective**: Map the complete external attack surface without interacting with critical services.
+
+**Duration Estimate**: 2–6 hours  
+**Risk Level**: LOW (passive techniques preferred)  
+**OPSEC Rating**: ★★★★★ (non-intrusive, blends with background noise)
 
 | Step | Action                           | Target                                 | Data Collected                                                          |
 | ---- | -------------------------------- | -------------------------------------- | ----------------------------------------------------------------------- |
@@ -215,6 +227,19 @@ Informational:          ████                      1  (CVE-2014-9016)
 | 1.6  | FTP credential interception test | Port 21 on 201.131.132.131             | Plaintext credential capture feasibility                                |
 | 1.7  | Port scan validation             | All identified hosts                   | Cross-reference with existing scan data, identify delta                 |
 
+**Success Criteria**:
+
+- [ ] Confirmed software versions for ≥90% of DMZ services
+- [ ] Network topology map validated against existing inventory
+- [ ] ≥1 confirmed exploitable attack path identified
+- [ ] IKEv2 aggressive mode viability assessed
+
+**Abort Conditions**:
+
+- Active IDS/IPS detection with immediate block behavior
+- Rate limiting or tarpitting detected on ≥50% of probes
+- Canary tokens or honeypot indicators detected
+
 **Output Artifact**: Complete network topology with confirmed service versions and CVE correlation.
 
 ---
@@ -222,6 +247,10 @@ Informational:          ████                      1  (CVE-2014-9016)
 ### 5.2 Phase 2 — Initial Access
 
 **Objective**: Achieve remote code execution on the primary DMZ target.
+
+**Duration Estimate**: 1–4 hours (depending on exploit reliability)  
+**Risk Level**: MEDIUM (active exploitation, network-visible)  
+**OPSEC Rating**: ★★★☆☆ (exploit traffic may trigger IDS signatures)
 
 | Priority | Vector                  | Mechanism                                                                                 | Target          | Expected Result       |
 | -------- | ----------------------- | ----------------------------------------------------------------------------------------- | --------------- | --------------------- |
@@ -243,11 +272,29 @@ Phase 2 Entry
       └─→ [Priority 3] CVE-2021-21703 ──→ Code exec ──→ Phase 3
 ```
 
+**Success Criteria**:
+
+- [ ] Interactive shell or equivalent command execution achieved
+- [ ] Shell stability confirmed (session survives ≥5 min idle)
+- [ ] Network callback established (C2 or reverse shell)
+- [ ] Target OS and kernel version enumerated
+
+**Abort Conditions**:
+
+- All three vectors fail after 3 attempts each
+- Target service crashes or restarts (potential alerting)
+- Unexpected WAF or IPS block detected
+- Shell achieved but immediately killed (EDR detected)
+
 ---
 
 ### 5.3 Phase 3 — Privilege Escalation
 
 **Objective**: Elevate from `www-data` to `root` on the compromised host.
+
+**Duration Estimate**: < 1 min (PwnKit) to hours (CARPE DIEM logrotate trigger)  
+**Risk Level**: LOW–MEDIUM (local execution, no network artifacts)  
+**OPSEC Rating**: ★★★★☆ (limited network visibility, local logging risk)
 
 | Order | CVE                        | Technique                                                                                                                | Reliability | Time Constraint                               |
 | ----- | -------------------------- | ------------------------------------------------------------------------------------------------------------------------ | ----------- | --------------------------------------------- |
@@ -276,20 +323,38 @@ function escalate(current_shell):
     return current_shell  // Maintain access, retry later
 ```
 
+**Success Criteria**:
+
+- [ ] Root shell or equivalent (UID 0) achieved
+- [ ] Privilege level verified via `id`, `/proc/self/status`
+- [ ] Sudo/suid enumeration completed for persistence planning
+- [ ] Kernel version and patch level documented
+
+**Abort Conditions**:
+
+- PwnKit fails (non-standard `pkexec` or patched polkit)
+- CARPE DIEM doesn't trigger within 4-hour window
+- No Tomcat installation found for CVE-2016-1240
+- Kernel-level protections detected (SELinux enforcing, AppArmor)
+
 ---
 
 ### 5.4 Phase 4 — Persistence & Lateral Movement
 
 **Objective**: Establish durable access and expand control across network zones.
 
+**Duration Estimate**: 4–12 hours  
+**Risk Level**: HIGH (network scanning, credential abuse, cross-segment traffic)  
+**OPSEC Rating**: ★★☆☆☆ (significant network and host-level artifacts)
+
 #### 5.4.1 Persistence Mechanisms
 
-| Mechanism             | Implementation                                             | Stealth Level                    |
-| --------------------- | ---------------------------------------------------------- | -------------------------------- |
-| SSH key injection     | Append attacker public key to `/root/.ssh/authorized_keys` | Low — visible in file            |
-| Crontab modification  | Periodic reverse shell callback                            | Medium — visible in `crontab -l` |
-| Kernel module loading | Loadable kernel module for syscall hooking                 | High — invisible to userspace    |
-| Systemd service       | Malicious service unit in `/etc/systemd/system/`           | Medium — visible in `systemctl`  |
+| Mechanism             | Implementation                                             | Stealth Level | Survivability |
+| --------------------- | ---------------------------------------------------------- | ------------- | ------------- |
+| SSH key injection     | Append attacker public key to `/root/.ssh/authorized_keys` | Low           | High          |
+| Crontab modification  | Periodic reverse shell callback                            | Medium        | Medium        |
+| Kernel module loading | Loadable kernel module for syscall hooking                 | High          | Very High     |
+| Systemd service       | Malicious service unit in `/etc/systemd/system/`           | Medium        | High          |
 
 #### 5.4.2 Lateral Movement Paths
 
@@ -322,11 +387,25 @@ ROOT on 201.131.132.131 (Z01-DMZ)
 
 #### 5.4.3 C2 Communication Channels
 
-| Channel             | Protocol | Port            | Characteristics                                        |
-| ------------------- | -------- | --------------- | ------------------------------------------------------ |
-| DNS tunneling       | UDP 53   | 201.131.132.7   | Existing forwarding server, legitimate traffic pattern |
-| HTTPS callback      | TCP 443  | 201.131.132.131 | Encrypted, blends with normal web traffic              |
-| ICMP covert channel | ICMP     | All hosts       | Data embedded in ICMP echo payloads                    |
+| Channel             | Protocol | Port            | Characteristics                                        | Bandwidth |
+| ------------------- | -------- | --------------- | ------------------------------------------------------ | --------- |
+| DNS tunneling       | UDP 53   | 201.131.132.7   | Existing forwarding server, legitimate traffic pattern | Low       |
+| HTTPS callback      | TCP 443  | 201.131.132.131 | Encrypted, blends with normal web traffic              | High      |
+| ICMP covert channel | ICMP     | All hosts       | Data embedded in ICMP echo payloads                    | Very Low  |
+
+**Success Criteria**:
+
+- [ ] ≥2 independent persistence mechanisms installed
+- [ ] ≥1 lateral movement path validated end-to-end
+- [ ] C2 channel operational with ≥95% uptime over 24h
+- [ ] Domain admin or equivalent access achieved (if AD present)
+
+**Abort Conditions**:
+
+- Lateral movement blocked by network segmentation (unexpected)
+- C2 channels blocked within 1 hour of deployment
+- Host-based monitoring (EDR/AV) detects persistence mechanism
+- Network anomaly alerts exceed threshold (≥3 alerts/hour)
 
 ---
 
@@ -334,13 +413,30 @@ ROOT on 201.131.132.131 (Z01-DMZ)
 
 **Objective**: Eliminate evidence of access and maintain operational security.
 
-| Action                   | Target                                           | Method                                    |
-| ------------------------ | ------------------------------------------------ | ----------------------------------------- |
-| Log purging              | Apache access/error logs, auth.log, syslog, wtmp | Selective line removal or full truncation |
-| Timestomping             | Modified files, deployed tools                   | Match timestamps to adjacent system files |
-| File deletion            | Exploits, temporary files, shell history         | Secure overwrite (3-pass) before unlink   |
-| Process hiding           | C2 agents, implants                              | LD_PRELOAD hooking or kernel-level hiding |
-| Network artifact cleanup | Connection logs, DNS queries                     | iptables LOG target manipulation          |
+**Duration Estimate**: 1–3 hours  
+**Risk Level**: MEDIUM (log modifications can themselves trigger SIEM alerts)  
+**OPSEC Rating**: ★★★☆☆ (depends on target's logging maturity)
+
+| Action                   | Target                                           | Method                                    | Detection Risk |
+| ------------------------ | ------------------------------------------------ | ----------------------------------------- | -------------- |
+| Log purging              | Apache access/error logs, auth.log, syslog, wtmp | Selective line removal or full truncation | High           |
+| Timestomping             | Modified files, deployed tools                   | Match timestamps to adjacent system files | Medium         |
+| File deletion            | Exploits, temporary files, shell history         | Secure overwrite (3-pass) before unlink   | Low            |
+| Process hiding           | C2 agents, implants                              | LD_PRELOAD hooking or kernel-level hiding | Medium         |
+| Network artifact cleanup | Connection logs, DNS queries                     | iptables LOG target manipulation          | Low            |
+
+**Success Criteria**:
+
+- [ ] No anomalous entries in syslog/auth.log for last 24h
+- [ ] Deployed tool timestamps match system baseline
+- [ ] Shell history cleared (`history -c` + `.bash_history` truncation)
+- [ ] No orphaned processes or network listeners
+
+**Abort Conditions**:
+
+- Centralized logging (SIEM) with immutable append-only storage
+- File integrity monitoring (AIDE/OSSEC) blocks log modifications
+- Forensic imaging already in progress (detected via `dd` or similar)
 
 ---
 
@@ -606,4 +702,215 @@ Go    ████████████                                  1/5 
 
 ---
 
+## 8. Execution Timeline & Resource Model
+
+### 8.1 Gantt-Style Timeline
+
+```
+Hour:  0   2   4   6   8  10  12  14  16  18  20  22  24
+       │   │   │   │   │   │   │   │   │   │   │   │   │
+Phase 1 ████████████                                      Reconnaissance
+Phase 2     ████████████                                  Initial Access
+Phase 3         ████                                      Priv Esc (PwnKit)
+         or     ████████████████████                      Priv Esc (CARPE DIEM)
+Phase 4                 ████████████████████████          Persistence & Lateral
+Phase 5                                 ████████████      Anti-Forensics
+       │   │   │   │   │   │   │   │   │   │   │   │   │
+       0   2   4   6   8  10  12  14  16  18  20  22  24h
+```
+
+### 8.2 Resource Requirements
+
+| Phase   | Network Bandwidth | CPU Usage | Disk I/O | Memory | Stealth Constraint          |
+| ------- | ----------------- | --------- | -------- | ------ | --------------------------- |
+| Phase 1 | Low–Medium        | Low       | None     | <50MB  | Rate-limit to <100 pps      |
+| Phase 2 | Medium            | Medium    | None     | <100MB | Burst, then silence 60s     |
+| Phase 3 | None              | Low       | Low      | <50MB  | Minimal local footprint     |
+| Phase 4 | High              | Medium    | Medium   | <200MB | Jitter C2 callbacks ±30%    |
+| Phase 5 | None              | Low       | High     | <50MB  | Match baseline I/O patterns |
+
+### 8.3 Personnel Model
+
+| Role               | Phase Involvement | Criticality |
+| ------------------ | ----------------- | ----------- |
+| Recon Operator     | Phase 1, 2        | Primary     |
+| Exploit Developer  | Phase 2, 3        | Primary     |
+| Post-Exploitation  | Phase 3, 4        | Primary     |
+| OPSEC Analyst      | All phases        | Continuous  |
+| Incident Commander | Decision gates    | On-call     |
+
+---
+
+## 9. Contingency Planning & Abort Criteria
+
+### 9.1 Global Abort Conditions
+
+These conditions terminate the entire operation regardless of current phase:
+
+| Condition                             | Action                      | Rationale                                |
+| ------------------------------------- | --------------------------- | ---------------------------------------- |
+| Blue team confirms active counter-op  | Immediate cease + cleanup   | Compromised operational security         |
+| Legal/compliance escalation detected  | Immediate cease + full wipe | Regulatory risk exceeds assessment value |
+| Asset (personnel) safety concern      | Immediate cease             | Human safety supersedes all objectives   |
+| Scope boundary violation (production) | Immediate cease + rollback  | Theoretical model only — no real targets |
+
+### 9.2 Phase-Specific Fallback Chains
+
+```
+Phase 1 Failure:
+  Passive recon → Active scan → Social engineering OSINT → ABORT
+
+Phase 2 Failure:
+  CVE-2019-11043 → FTP sniff → CVE-2021-21703 → Spray-and-pray → ABORT
+                                                        │
+                                                        ▼
+                                              Return to Phase 1
+                                              (re-evaluate attack surface)
+
+Phase 3 Failure:
+  PwnKit → CARPE DIEM → CVE-2016-1240 → Kernel exploit search → ABORT
+                                                            │
+                                                            ▼
+                                                  Maintain www-data access
+                                                  Attempt Phase 4 with
+                                                  limited privileges
+
+Phase 4 Failure:
+  Z02 pivot → Z04 pivot → Z10 pivot → Z09 pivot → ABORT (scope exhausted)
+                                                     │
+                                                     ▼
+                                           Maintain DMZ access only
+
+Phase 5 Failure:
+  Selective cleanup → Full wipe → Controlled burn → ABORT (accept attribution)
+```
+
+### 9.3 Detection Response Matrix
+
+| Detection Event                      | Severity | Response                                                            |
+| ------------------------------------ | -------- | ------------------------------------------------------------------- |
+| Single IDS alert (low)               | LOW      | Pause 15 min, adjust signature profile, resume                      |
+| Multiple IDS alerts (>3/hour)        | MEDIUM   | Switch to passive mode, evaluate detection capability               |
+| Firewall rule change detected        | HIGH     | Abort current phase, assess if block is targeted or routine         |
+| Active port scan on compromised host | CRITICAL | Full cleanup, abort operation, investigate blue team response       |
+| Honeypot/canary triggered            | CRITICAL | Immediate full abort, zero-fill artifacts, disconnect all callbacks |
+
+---
+
+## 10. Operational Metrics & KPIs
+
+### 10.1 Phase KPIs
+
+| Phase   | KPI                                       | Target        | Measurement Method                       |
+| ------- | ----------------------------------------- | ------------- | ---------------------------------------- |
+| Phase 1 | Service enumeration completeness          | ≥90%          | Discovered services / total inventory    |
+| Phase 1 | False positive rate (service detection)   | <5%           | Manual validation of flagged services    |
+| Phase 2 | Time to first shell                       | <2 hours      | Timestamp: recon complete → shell prompt |
+| Phase 2 | Exploit reliability (successful/executed) | ≥80%          | Successful attempts / total attempts     |
+| Phase 3 | Time to root                              | <1 hour       | Timestamp: www-data → UID 0              |
+| Phase 3 | Privilege escalation reliability          | ≥95%          | Successful escalations / attempts        |
+| Phase 4 | Lateral movement coverage                 | ≥3 zones      | Zones accessed / total target zones      |
+| Phase 4 | C2 uptime                                 | ≥95% over 24h | Heartbeat success rate                   |
+| Phase 5 | Detection event count (post-cleanup)      | 0             | SIEM/IDS alert count post-Phase 5        |
+| Phase 5 | Residual artifact count                   | 0             | Manual verification post-cleanup         |
+
+### 10.2 Aggregate Operation Metrics
+
+```
+┌─────────────────────────────────────────────────────────┐
+│               OPERATION SCORECARD                        │
+├──────────────────────┬──────────────────────────────────┤
+│ Total Duration       │ Target: <24h | Actual: ___h      │
+│ Shells Obtained      │ Target: ≥2   | Actual: ___       │
+│ Zones Compromised    │ Target: ≥3   | Actual: ___       │
+│ Detection Events     │ Target: 0    | Actual: ___       │
+│ Artifacts Residual   │ Target: 0    | Actual: ___       │
+│ Scope Violations     │ Target: 0    | Actual: ___       │
+│ Data Exfiltrated     │ Target: —    | Actual: ___GB     │
+└──────────────────────┴──────────────────────────────────┘
+```
+
+---
+
+## 11. MITRE ATT&CK® Technique Mapping
+
+> Each technique used across the five phases is mapped to the MITRE ATT&CK® Enterprise framework for standardization and traceability.
+
+### 11.1 Phase 1 — Reconnaissance
+
+| Technique ID | Technique Name                 | Usage in Plan                               |
+| ------------ | ------------------------------ | ------------------------------------------- |
+| T1595        | Active Scanning                | Port scanning, service fingerprinting       |
+| T1595.002    | Vulnerability Scanning         | CVE correlation against discovered services |
+| T1590.002    | DNS                            | Zone transfer attempts, subdomain enum      |
+| T1592        | Gather Victim Host Information | OS/stack fingerprinting                     |
+| T1590.001    | Network Security Appliances    | IKEv2 probing, VPN configuration discovery  |
+
+### 11.2 Phase 2 — Initial Access
+
+| Technique ID | Technique Name                    | Usage in Plan                            |
+| ------------ | --------------------------------- | ---------------------------------------- |
+| T1190        | Exploit Public-Facing Application | CVE-2019-11043 (PHP-FPM), CVE-2021-21703 |
+| T1078        | Valid Accounts                    | FTP credential interception              |
+| T1133        | External Remote Services          | IKEv2 VPN exploitation                   |
+
+### 11.3 Phase 3 — Privilege Escalation
+
+| Technique ID | Technique Name                        | Usage in Plan                               |
+| ------------ | ------------------------------------- | ------------------------------------------- |
+| T1068        | Exploitation for Privilege Escalation | CVE-2021-4034, CVE-2019-0211, CVE-2016-1240 |
+| T1548        | Abuse Elevation Control Mechanism     | pkexec SUID exploitation (PwnKit)           |
+
+### 11.4 Phase 4 — Persistence & Lateral Movement
+
+| Technique ID | Technique Name                        | Usage in Plan                      |
+| ------------ | ------------------------------------- | ---------------------------------- |
+| T1098.004    | SSH Authorized Keys                   | SSH key injection persistence      |
+| T1053.003    | Cron                                  | Crontab reverse shell              |
+| T1543        | Create or Modify System Process       | Systemd service unit               |
+| T1021.002    | SMB/Windows Admin Shares              | SMB relay / Pass-the-Hash in Z02   |
+| T1021.001    | Remote Desktop Protocol               | RDP lateral movement               |
+| T1550        | Use Alternate Authentication Material | Pass-the-Hash for AD               |
+| T1572        | Protocol Tunneling                    | DNS tunneling, ICMP covert channel |
+| T1071        | Application Layer Protocol            | HTTPS C2 callback                  |
+| T1078        | Valid Accounts                        | Credential reuse across segments   |
+
+### 11.5 Phase 5 — Defense Evasion
+
+| Technique ID | Technique Name                 | Usage in Plan                        |
+| ------------ | ------------------------------ | ------------------------------------ |
+| T1070.002    | Clear Linux or Mac System Logs | Log purging (syslog, auth.log, wtmp) |
+| T1070.006    | Timestomp                      | File timestamp modification          |
+| T1070.004    | File Deletion                  | Secure overwrite of artifacts        |
+| T1562.001    | Disable or Modify Tools        | iptables LOG target manipulation     |
+| T1014        | Rootkit                        | Kernel module / LD_PRELOAD hooking   |
+| T1620        | Reflective Code Loading        | Fileless execution via memfd_create  |
+
+### 11.6 Coverage Summary
+
+```
+Tactics Covered:
+  ✅ Reconnaissance        (TA0043)
+  ✅ Resource Development  (TA0042) — implicit via exploit preparation
+  ✅ Initial Access        (TA0001)
+  ✅ Execution             (TA0002)
+  ✅ Persistence           (TA0003)
+  ✅ Privilege Escalation  (TA0004)
+  ✅ Defense Evasion       (TA0005)
+  ✅ Lateral Movement      (TA0008)
+  ✅ Command and Control   (TA0011)
+  ✅ Collection            (TA0009) — implicit via data exfil paths
+  ⬜ Credential Access     (TA0006) — not primary focus
+  ⬜ Discovery             (TA0007) — partially covered in Phase 1
+  ⬜ Exfiltration          (TA0010) — referenced but not detailed
+  ⬜ Impact                (TA0040) — out of scope for simulation
+```
+
+---
+
 _End of report._
+
+**Changelog**:
+
+- v2.1.0 (2026-04-09): Added success criteria, abort conditions, execution timeline, contingency planning, operational KPIs, and MITRE ATT&CK® technique mapping. Added resource model and personnel allocation.
+- v2.0.0 (2026-04-08): Initial strategic execution plan with infrastructure inventory, CVE prioritization, exploitation chains, and language selection matrix.
