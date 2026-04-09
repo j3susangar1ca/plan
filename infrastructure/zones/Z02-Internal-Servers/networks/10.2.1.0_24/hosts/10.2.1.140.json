@@ -2,15 +2,15 @@
   "$schema": "../../../../schemas/host-scan.schema.json",
   "ip_address": "10.2.1.140",
   "hostnames": [
-    "srv-expediente",
-    "expediente.hcg.gob.mx",
-    "pah.hcg.gob.mx",
-    "intranet.hcg.gob.mx",
-    "empleado.hcg.gob.mx"
+    "srv-registros",
+    "registros.corp-infra.local",
+    "portal.corp-infra.local",
+    "intranet.corp-infra.local",
+    "empleado.corp-infra.local"
   ],
   "network_zone": "Internal-Servers",
   "os_info": "Windows Server",
-  "roles": ["Expedientes Clínicos", "Portal de Autogestión Hospitalaria", "Intranet", "Portal Empleado"],
+  "roles": ["Registros Operativos", "Portal de Autogestión Corporativa", "Intranet", "Portal Empleado"],
   "open_ports": [
     {"port": 80, "protocol": "TCP", "service": "HTTP"},
     {"port": 443, "protocol": "TCP", "service": "HTTPS"},
@@ -19,6 +19,6 @@
   ],
   "exploitation_vectors": {
     "risk_level": "CRITICO",
-    "risk_justification": "Datos médicos sensibles, RDP abierto, SMB sin restricciones"
+    "risk_justification": "Datos confidenciales críticos, RDP abierto, SMB sin restricciones"
   }
 }
