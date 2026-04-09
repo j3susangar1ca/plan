@@ -42,9 +42,7 @@
 
 ---
 
----
-
-## �� Quick Navigation
+## 🧭 Quick Navigation
 
 <details open>
 <summary><strong>📋 Jump to Section</strong></summary>
@@ -74,10 +72,10 @@ This repository constitutes a **Formalized Adversary Emulation Environment** des
 |:-:|:----------|:------:|:-------|
 | 1 | **🧮 Formal Verification** | 🟡 In Progress | 🔴 Critical |
 | 2 | **⚔️ Advanced Threat Emulation** | 🟢 Active | 🟠 High |
-| 3 | **📈 Resilience Engineering** | �� In Progress | 🟠 High |
+| 3 | **📈 Resilience Engineering** | 🟡 In Progress | 🟠 High |
 | 4 | **📐 Standards Alignment** | 🟢 Complete | 🟡 Medium |
 
-> 📊 **Legend**: 🟢 Complete | 🟡 In Progress | 🔴 Blocked | �� Critical | 🟠 High | 🟡 Medium | 🟢 Low
+> 📊 **Legend**: 🟢 Complete | 🟡 In Progress | 🔴 Blocked | 🔴 Critical | 🟠 High | 🟡 Medium | 🟢 Low
 
 ### 1.3 Design Axes
 
