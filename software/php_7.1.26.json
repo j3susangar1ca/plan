@@ -22,7 +22,7 @@
   ],
   "implementations": [
     {
-      "target": "Portal Web HCG",
+      "target": "Portal Web Corporativo",
       "host": "201.131.132.131",
       "role": "Application Runtime Engine",
       "network_zone": "Z01-DMZ",
