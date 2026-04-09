@@ -1,9 +1,9 @@
 {
   "id": "S01",
   "cidr": "10.2.1.0/24",
-  "name": "Servidores Core HCG",
+  "name": "Core Infrastructure Servers",
   "gateway": "10.2.1.1",
   "dns_servers": ["10.2.1.1"],
   "host_count": 18,
-  "description": "Red principal de servidores internos (AD, expedientes, archivos, biométrica)"
+  "description": "Red principal de servidores internos (AD, bases de datos, archivos, biométrica)"
 }

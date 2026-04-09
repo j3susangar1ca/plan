@@ -1,7 +1,7 @@
 {
   "$schema": "../../../../schemas/host-scan.schema.json",
   "ip_address": "216.245.211.42",
-  "hostnames": ["lajun.hosting-mexico.net", "cpanel.hcg.gob.mx", "whm.hcg.gob.mx", "webmail.hcg.gob.mx"],
+  "hostnames": ["lajun.hosting-mexico.net", "cpanel.corp-infra.local", "whm.corp-infra.local", "webmail.corp-infra.local"],
   "network_zone": "Z01-DMZ",
   "os_info": "CentOS/CloudLinux",
   "roles": ["cPanel Hosting", "WHM Management", "Webmail"],
