@@ -9,13 +9,13 @@
     "last_updated": "2026-04-08T12:00:00Z"
   },
   "metadata": {
-    "organization": "Hospital Civil de Guadalajara",
+    "organization": "Corporativo Global de Infraestructura",
     "assessment_type": "Red Team Operations / Intrusion Framework",
     "classification": "CONFIDENTIAL",
     "scope": {
       "network_zones": ["Z01-DMZ"],
       "ip_ranges": ["201.131.132.0/24"],
-      "domains": ["hcg.gob.mx"]
+      "domains": ["corp-infra.local"]
     }
   },
   "structure": {
