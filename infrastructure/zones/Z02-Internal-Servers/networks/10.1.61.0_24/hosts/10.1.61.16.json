@@ -1,9 +1,9 @@
 {
   "$schema": "../../../../schemas/host-scan.schema.json",
   "ip_address": "10.1.61.16",
-  "hostnames": ["srv-synhcgv"],
+  "hostnames": ["srv-syn-site2"],
   "network_zone": "Internal-Servers",
-  "roles": ["Sincronización HCG Veracruz"],
+  "roles": ["Sincronización Sede Regional"],
   "open_ports": [],
   "exploitation_vectors": {
     "risk_level": "MEDIO",
