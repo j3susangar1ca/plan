@@ -1,7 +1,7 @@
 {
   "$schema": "../../../../schemas/host-scan.schema.json",
   "ip_address": "10.2.61.17",
-  "hostnames": ["srv-synhcgn"],
+  "hostnames": ["srv-syn-payroll"],
   "network_zone": "Internal-Servers",
   "roles": ["Nómina", "Payroll Processing"],
   "open_ports": [
