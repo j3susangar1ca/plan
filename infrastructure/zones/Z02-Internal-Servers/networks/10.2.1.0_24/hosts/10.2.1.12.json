@@ -1,7 +1,7 @@
 {
   "$schema": "../../../../schemas/host-scan.schema.json",
   "ip_address": "10.2.1.12",
-  "hostnames": ["srv-portal", "portal.hcg.gob.mx"],
+  "hostnames": ["srv-portal", "portal.corp-infra.local"],
   "network_zone": "Internal-Servers",
   "roles": ["Portal Web Interno"],
   "open_ports": [

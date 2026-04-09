@@ -1,12 +1,12 @@
 {
   "$schema": "../../../../schemas/host-scan.schema.json",
   "ip_address": "10.2.1.7",
-  "hostnames": ["srv-hcginfmed"],
+  "hostnames": ["srv-infra-data"],
   "network_zone": "Internal-Servers",
-  "roles": ["Información Médica"],
+  "roles": ["Datos de Infraestructura"],
   "open_ports": [],
   "exploitation_vectors": {
     "risk_level": "MEDIO",
-    "risk_justification": "Roles de información médica sin evaluación de puertos"
+    "risk_justification": "Roles de infraestructura sin evaluación de puertos"
   }
 }

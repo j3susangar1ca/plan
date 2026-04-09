@@ -1,7 +1,7 @@
 {
   "$schema": "../../../../schemas/host-scan.schema.json",
   "ip_address": "10.2.1.46",
-  "hostnames": ["srv-correo", "correo.opdhcg.net"],
+  "hostnames": ["srv-correo", "correo.corp-infra.net"],
   "network_zone": "Internal-Servers",
   "roles": ["Servidor de Correo"],
   "open_ports": [],
