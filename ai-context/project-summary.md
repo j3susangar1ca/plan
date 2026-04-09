@@ -2,14 +2,14 @@
 
 ## Project Overview
 
-This security audit framework provides a structured knowledge base for penetration testing activities targeting the Hospital Civil de Guadalajara (HCG) infrastructure.
+This security audit framework provides a structured knowledge base for penetration testing activities targeting the Corporativo Global de Infraestructura (CGI) infrastructure.
 
 ## Target Summary
 
 | Attribute | Value |
 |-----------|-------|
-| Organization | Hospital Civil de Guadalajara |
-| Primary Domain | hcg.gob.mx |
+| Organization | Corporativo Global de Infraestructura |
+| Primary Domain | corp-infra.local |
 | Network Zone | Z01-DMZ |
 | IP Range | 201.131.132.0/24 |
 | Primary Host | 201.131.132.131 |
