@@ -1,7 +1,7 @@
 {
   "$schema": "../../../../schemas/host-scan.schema.json",
   "ip_address": "10.2.1.139",
-  "hostnames": ["srv-sigma", "sigma.hcg.gob.mx", "api-sigma.hcg.gob.mx"],
+  "hostnames": ["srv-sigma", "sigma.corp-infra.local", "api-sigma.corp-infra.local"],
   "network_zone": "Internal-Servers",
   "os_info": "Linux/Unknown",
   "roles": ["Sistema Biométrico", "Control de Acceso"],
