@@ -608,10 +608,14 @@ plan/
 │   │   ├── CVE-2021-21703/
 │   │   └── CVE-2021-4034/
 │   ├── frameworks/                    # Metasploit & custom framework modules
-│   │   └── bid-6684/
+│   │   ├── bid-6684/
+│   │   ├── msf_diamorphine_stealth_lpe.rb   # Stealth LPE module
+│   │   ├── msf_reptile_fileless_privesc.rb  # Fileless PrivEsc module
+│   │   └── stealth-c2/                # Stealth C2 framework
 │   └── implants/                      # Post-exploitation tooling models
 │       ├── c2/                        # Command & control channels
 │       ├── firewall-bypass/           # Firewall evasion techniques
+│       ├── inyection/                 # Process injection models
 │       ├── persistence/               # Persistence mechanism models
 │       └── rootkits/                  # Kernel-level rootkit models
 │
