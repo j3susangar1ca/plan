@@ -2,6 +2,6 @@
   "id": "Z02-Internal-Servers",
   "name": "Servidores Internos",
   "risk_level": "CRITICO",
-  "risk_justification": "AD expuesto, SMB con 37 comparticiones sin auditoría, RDP abierto, datos médicos sensibles, MySQL filtrado.",
+  "risk_justification": "AD expuesto, SMB con 37 comparticiones sin auditoría, RDP abierto, datos operativos críticos, MySQL filtrado.",
   "host_count": 10
 }
