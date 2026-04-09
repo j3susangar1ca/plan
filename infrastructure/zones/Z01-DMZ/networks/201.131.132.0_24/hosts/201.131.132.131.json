@@ -1,7 +1,7 @@
 {
   "$schema": "../../../../schemas/host-scan.schema.json",
   "ip_address": "201.131.132.131",
-  "hostnames": ["www.hcg.gob.mx", "hcg.gob.mx", "mail.hcg.gob.mx", "ftp.hcg.gob.mx", "portal.hcg.gob.mx"],
+  "hostnames": ["www.corp-infra.local", "corp-infra.local", "mail.corp-infra.local", "ftp.corp-infra.local", "portal.corp-infra.local"],
   "network_zone": "Z01-DMZ",
   "os_info": "Linux",
   "roles": ["Web Server Público", "Mail Server", "FTP Server", "Portal Público"],

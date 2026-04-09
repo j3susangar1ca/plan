@@ -1,7 +1,7 @@
 {
   "$schema": "../../../../schemas/host-scan.schema.json",
   "ip_address": "201.131.132.136",
-  "hostnames": ["intranet.hcg.gob.mx"],
+  "hostnames": ["intranet.corp-infra.local"],
   "network_zone": "Z01-DMZ",
   "os_info": "Linux",
   "roles": ["Intranet Pública"],
