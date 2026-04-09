@@ -1,7 +1,7 @@
 {
   "id": "S06",
   "cidr": "201.131.132.0/24",
-  "name": "DMZ Web Pública HCG",
+  "name": "Public Infrastructure DMZ",
   "gateway": null,
   "dns_servers": [],
   "host_count": 2,
