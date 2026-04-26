@@ -62,4 +62,29 @@ static __forceinline uint32_t HashStringDjb2W(const wchar_t *str) {
 #define HASH_InternetReadFile           0x17E5976A
 #define HASH_InternetCloseHandle        0x23E40FB0
 
+static __forceinline PVOID GetModuleBaseByHash(uint32_t hash) {
+    PPEB peb = (PPEB)__readgsqword(0x60);
+    PLIST_ENTRY head = &peb->Ldr->InLoadOrderModuleList;
+    PLIST_ENTRY current = head->Flink;
+    while (current != head) {
+        PLDR_DATA_TABLE_ENTRY entry = CONTAINING_RECORD(current, LDR_DATA_TABLE_ENTRY, InLoadOrderLinks);
+        if (HashStringDjb2W(entry->BaseDllName.Buffer) == hash) return entry->DllBase;
+        current = current->Flink;
+    }
+    return NULL;
+}
+
+static __forceinline PVOID ResolveApiByHash(PVOID moduleBase, uint32_t hash) {
+    PIMAGE_DOS_HEADER pDos = (PIMAGE_DOS_HEADER)moduleBase;
+    PIMAGE_NT_HEADERS pNt = (PIMAGE_NT_HEADERS)((PBYTE)moduleBase + pDos->e_lfanew);
+    PIMAGE_EXPORT_DIRECTORY pExport = (PIMAGE_EXPORT_DIRECTORY)((PBYTE)moduleBase + pNt->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_EXPORT].VirtualAddress);
+    PDWORD pNames = (PDWORD)((PBYTE)moduleBase + pExport->AddressOfNames);
+    PDWORD pFuncs = (PDWORD)((PBYTE)moduleBase + pExport->AddressOfFunctions);
+    PWORD pOrds = (PWORD)((PBYTE)moduleBase + pExport->AddressOfNameOrdinals);
+    for (DWORD i = 0; i < pExport->NumberOfNames; i++) {
+        if (HashStringDjb2A((LPCSTR)((PBYTE)moduleBase + pNames[i])) == hash) return (PVOID)((PBYTE)moduleBase + pFuncs[pOrds[i]]);
+    }
+    return NULL;
+}
+
 #endif
