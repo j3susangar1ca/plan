@@ -35,6 +35,7 @@ typedef struct _SYSCALL_TABLE {
     SYSCALL_ENTRY NtQueryVirtualMemory;
     SYSCALL_ENTRY NtOpenKey;
     SYSCALL_ENTRY NtDelayExecution;
+    SYSCALL_ENTRY NtCreateTimer2;
 } SYSCALL_TABLE;
 
 typedef struct _API_TABLE {
@@ -200,6 +201,7 @@ static void InitializeSyscallTable(SYSCALL_TABLE *tbl, PVOID hNtdll, PVOID gadge
     RESOLVE_SYSCALL(NtQueryVirtualMemory,    HASH_NtQueryVirtualMemory);
     RESOLVE_SYSCALL(NtOpenKey,               HASH_NtOpenKey);
     RESOLVE_SYSCALL(NtDelayExecution,        HASH_NtDelayExecution);
+    RESOLVE_SYSCALL(NtCreateTimer2,          HASH_NtCreateTimer2);
 
     #undef RESOLVE_SYSCALL
 }
