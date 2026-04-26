@@ -35,5 +35,6 @@ static WORD GetSSN(PVOID pFunc) {
 }
 
 extern "C" NTSTATUS InvokeSyscall(WORD ssn, PVOID gadget, ...);
+extern "C" PVOID FindCleanSyscallStub(PVOID cleanNtdllBase, DWORD funcRva);
 
 #endif
