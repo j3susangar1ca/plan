@@ -4,21 +4,17 @@ This directory contains a sophisticated, multi-stage attack vector for Windows 1
 
 ## Components
 
-### 1. Delivery: ISO Image Smuggling + LNK
-Instead of a simple HTA, we now use a more robust **ISO image** delivery.
-- **MOTW Bypass**: Files inside an ISO often bypass the Mark-of-the-Web (MOTW) flag in many Windows versions.
-- **Obfuscated LNK**: The ISO contains a shortcut (LNK) file that executes a legitimate, signed Microsoft binary (like `cmd.exe`) with a highly obfuscated command.
-- **ESET/AMSI Evasion**: The initial command includes a stage-0 AMSI bypass to ensure the Stage 1 loader can be dropped and executed without triggering heuristics.
+### 1. Delivery: DLL Side-Loading (Phantom Hijacking)
+Para eliminar el "ruido" de comandos en archivos LNK, utilizamos una técnica de **DLL Side-Loading**.
+- **ISO Bundle**: El archivo ISO contiene un ejecutable legítimo y firmado por Microsoft (ej. `OneDrive.exe` o `calc.exe`) junto con una DLL maliciosa (`version.dll` o similar) que el ejecutable carga automáticamente al iniciar.
+- **Evasión de Línea de Comandos**: Al ejecutar el binario legítimo, no se generan argumentos sospechosos en el registro de procesos, evadiendo heurísticas basadas en `cmd.exe` o `powershell.exe`.
 
 ### 2. Stage 1 Loader (`src/loader.cpp`)
-A highly evasive C++ loader designed for the latest Windows 11 Pro security features.
-- **AMSI Bypass (Memory-Patching)**: Patches `amsi.dll!AmsiScanBuffer` in memory using hashed/indirect syscalls to disable script and buffer scanning.
-- **Silent UAC Bypass**: Implements the `fodhelper.exe` registry hijacking technique to automatically elevate itself to Administrator privileges without any user prompt.
-- **API Hashing**: Eliminates the Import Address Table (IAT).
-- **Sleep Obfuscation**: Implements the *Ekko* technique.
-- **Persistence**: 
-    - **Admin Mode**: Creates an "immortal" directory in `C:\Windows\Tasks\CON`.
-    - **User Mode (Fallback)**: Uses **COM Hijacking** in `HKCU` if elevation fails.
+Re-diseñado para alcanzar la invisibilidad total frente a EDRs y VBS:
+- **Bypass de AMSI mediante Hardware Breakpoints (HWBP)**: En lugar de parchear bytes o cambiar permisos de memoria (que activan alarmas de EDR), el loader utiliza los registros de depuración del procesador (`DR0`-`DR7`) para interceptar `AmsiScanBuffer` y forzar un resultado limpio sin tocar una sola instrucción de la DLL original.
+- **Halo's Gate (SSN Discovery)**: Resolución dinámica de números de llamadas al sistema (SSN) analizando bytes vecinos en `ntdll.dll`, lo que permite evadir hooks de EDR incluso si la función objetivo está comprometida.
+- **UAC Bypass vía Mock Directory**: Utiliza la técnica de directorios con espacios (`C:\Windows \System32`) para engañar a Windows y ejecutar binarios auto-elevados desde una ubicación de "confianza", evitando modificaciones ruidosas en el registro.
+- **Persistencia LotL (Living-off-the-Land)**: Implementa **COM Hijacking** de alta frecuencia para garantizar la ejecución persistente sin disparar alarmas de creación de servicios o tareas programadas.
 
 ### 3. Crypto Module (`src/crypto.h`)
 Standard implementation of **ChaCha20**, used for encrypting the Stage 2 payload and communication with the C2 infrastructure.

