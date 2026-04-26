@@ -1,28 +1,35 @@
-CC = x86_64-w64-mingw32-g++
-AS = nasm
-ASFLAGS = -f win64
-CFLAGS = -Wall -O2 -mwindows -static -I./src
-LDFLAGS = -shared -lntdll -lwininet
+CXX = x86_64-w64-mingw32-g++
+NASM = nasm
 
-TARGET = bin/version.dll
-SRC = src/loader.cpp
-ASM_SRC = src/syscalls.asm
-OBJ = bin/loader.o bin/syscalls.o
+# Flags de Compilación Hardenizados para Evasión
+CFLAGS = -O3 -s -mwindows -m64 -fno-asynchronous-unwind-tables \
+         -fno-exceptions -fno-rtti -fmerge-all-constants \
+         -fvisibility=hidden -ffunction-sections -fdata-sections \
+         -I./src
 
-all: $(TARGET)
+# Flags de Linker para ASLR/DEP y Stripping
+LDFLAGS = -shared -static-libgcc -static-libstdc++ \
+          -Wl,--strip-all -Wl,--discard-all \
+          -Wl,--dynamicbase -Wl,--nxcompat \
+          -Wl,--high-entropy-va -Wl,--subsystem,windows
 
-bin/syscalls.o: $(ASM_SRC)
-	mkdir -p bin
-	$(AS) $(ASFLAGS) $(ASM_SRC) -o bin/syscalls.o
+SRC_FILES = src/loader.cpp src/crypto.cpp
+ASM_FILES = src/syscalls.asm
+OBJ_FILES = bin/loader.o bin/syscalls.o bin/crypto.o
 
-bin/loader.o: $(SRC)
-	mkdir -p bin
-	$(CC) $(CFLAGS) -c $(SRC) -o bin/loader.o
+all: bin/version.dll
 
-$(TARGET): bin/loader.o bin/syscalls.o
-	$(CC) $(LDFLAGS) bin/loader.o bin/syscalls.o -o $(TARGET)
+bin/loader.o: src/loader.cpp
+	$(CXX) $(CFLAGS) -c $< -o $@
+
+bin/crypto.o: src/crypto.cpp
+	$(CXX) $(CFLAGS) -c $< -o $@
+
+bin/syscalls.o: src/syscalls.asm
+	$(NASM) -f win64 $< -o $@
+
+bin/version.dll: $(OBJ_FILES)
+	$(CXX) $(OBJ_FILES) $(LDFLAGS) -o $@
 
 clean:
-	rm -rf bin
-
-.PHONY: all clean
+	rm -f bin/*.o bin/*.dll
