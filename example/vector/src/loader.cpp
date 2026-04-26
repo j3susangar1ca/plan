@@ -34,6 +34,9 @@ static BOOL InitializeAll() {
     PVOID hKernel32 = GetModuleBaseByHash(HASH_KERNEL32);
     if (!hNtdll || !hKernel32) return FALSE;
 
+    // Pre-build API hash table for ntdll to speed up future resolutions
+    if (!BuildApiHashTable(hNtdll)) return FALSE;
+
     // Populate syscall table
     InitializeSyscallTable(&g_ApiTable.syscalls, hNtdll, g_SyscallGadget);
     if (g_ApiTable.syscalls.NtAllocateVirtualMemory.ssn == 0 ||
