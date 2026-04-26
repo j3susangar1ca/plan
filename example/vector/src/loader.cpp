@@ -10,7 +10,6 @@
 #include "advanced_bypass.h"
 #include "syscalls.h"
 #include "god_mode_stealth.h"
-#include "anti_triadic.h"
 
 // ===============================================================
 // Global State

