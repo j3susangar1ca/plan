@@ -247,7 +247,7 @@ static void DecryptPayloadGCM(BYTE* encrypted, SIZE_T len, BYTE* tag, BYTE* aad,
         return;
     }
 
-    AES_GCM_GCM_Decrypt(&ctx, encrypted, len, tag, aad, aadLen, decrypted);
+    AES_GCM_Decrypt(&ctx, encrypted, len, tag, aad, aadLen, decrypted);
 
     // Integration note: In a real loader, you'd execute 'decrypted' then wipe it.
     // This is a template for the requested logic.
