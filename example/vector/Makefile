@@ -32,6 +32,7 @@ CFLAGS_COMMON = -m64 -mwindows \
     -ffunction-sections -fdata-sections \
     -fno-stack-protector \
     -fno-ident \
+    -maes -mpclmul -mssse3 \
     -I./src
 
 # Linker: stripped, ASLR/DEP/HEVA, dead-code elimination
