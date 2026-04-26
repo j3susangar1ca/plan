@@ -3,23 +3,25 @@
 
 #include <stdint.h>
 
-#define HASH_SEED 0x811C9DC5
+#define HASH_SEED 5381
+
+#define HASH_NTDLL              0x1ED05E1D
+#define HASH_KERNEL32           0x6DDB95A6
+#define HASH_AMSI               0x1ED05E1D // Placeholder
 
 static __forceinline uint32_t HashStringDjb2A(const char *str) {
   uint32_t hash = HASH_SEED;
-  char c;
-  while ((c = *str++)) {
+  int c;
+  while ((c = *str++))
     hash = ((hash << 5) + hash) + c;
-  }
   return hash;
 }
 
 static __forceinline uint32_t HashStringDjb2W(const wchar_t *str) {
   uint32_t hash = HASH_SEED;
-  wchar_t c;
-  while ((c = *str++)) {
-    hash = ((hash << 5) + hash) + (char)c;
-  }
+  int c;
+  while ((c = *str++))
+    hash = ((hash << 5) + hash) + c;
   return hash;
 }
 
