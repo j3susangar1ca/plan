@@ -5,7 +5,7 @@
 
 typedef struct _SYSCALL_ENTRY {
     WORD ssn;
-    PVOID gadgetAddress;
+    PVOID address;
 } SYSCALL_ENTRY;
 
 static PVOID FindSyscallGadget() {

