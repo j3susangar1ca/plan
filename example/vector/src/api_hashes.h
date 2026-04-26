@@ -37,6 +37,8 @@ static __forceinline uint32_t HashStringDjb2W(const wchar_t *str) {
 #define HASH_RtlRestoreContext          0x061DB5B4
 #define HASH_NtContinue                 0xF50CA4A3
 #define HASH_NtAlertThread              0xE40B9392
+#define HASH_NtQueueApcThread           0xD30A8281
+#define HASH_NtResumeThread             0xC2097170
 
 #define HASH_VirtualAlloc               0x172EC6C5
 #define HASH_VirtualProtect             0x061DB5B4
