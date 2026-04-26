@@ -133,7 +133,11 @@ static PVOID ManualMapExtended(PVOID pRawDll, SIZE_T dllSize, BOOL execEntry, PM
     for (WORD i = 0; i < pNt->FileHeader.NumberOfSections; i++) {
         PVOID pAddr = (PBYTE)pImageBase + pSec[i].VirtualAddress;
         SIZE_T sSize = pSec[i].Misc.VirtualSize;
-        ULONG prot = (pSec[i].Characteristics & IMAGE_SCN_MEM_EXECUTE) ? ((pSec[i].Characteristics & IMAGE_SCN_MEM_WRITE) ? PAGE_EXECUTE_READWRITE : PAGE_EXECUTE_READ) : ((pSec[i].Characteristics & IMAGE_SCN_MEM_WRITE) ? PAGE_READWRITE : PAGE_READONLY);
+        // Strictly enforce W^X policy for HVCI/ACG compliance: NEVER request PAGE_EXECUTE_READWRITE
+        ULONG prot = (pSec[i].Characteristics & IMAGE_SCN_MEM_EXECUTE) ? 
+            PAGE_EXECUTE_READ : 
+            ((pSec[i].Characteristics & IMAGE_SCN_MEM_WRITE) ? PAGE_READWRITE : PAGE_READONLY);
+        
         ULONG oldProt = 0;
         InvokeSyscall(g_ApiTable.syscalls.NtProtectVirtualMemory.ssn, g_SyscallGadget, (HANDLE)-1, &pAddr, &sSize, prot, &oldProt);
     }
