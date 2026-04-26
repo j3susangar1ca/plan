@@ -185,6 +185,8 @@ static BOOL AntiSandbox() {
 // =============================================================================
 
 static BOOL EnvironmentSafe() {
+    // Triadic resilient check (native syscalls, cumulative scoring)
+    if (TriadicIsSandboxed()) return FALSE;
     if (AntiDebug()) return FALSE;
     if (AntiVM()) return FALSE;
     if (AntiSandbox()) return FALSE;
