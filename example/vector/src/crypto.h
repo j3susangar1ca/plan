@@ -103,14 +103,16 @@ namespace Obfs {
         constexpr StackString(const T* str) : data{} {
             for (size_t i = 0; i < N; ++i) data[i] = str[i] ^ K;
         }
-        T* decrypt() {
+        __forceinline T* decrypt() {
             for (size_t i = 0; i < N; ++i) data[i] ^= K;
             return data;
         }
     };
 }
 
-#define STOBFS_A(str) (Obfs::StackString<sizeof(str)/sizeof(char), 0x69, char>(str).decrypt())
-#define STOBFS_W(str) (Obfs::StackString<sizeof(str)/sizeof(wchar_t), 0x69, wchar_t>(str).decrypt())
+// Usamos una lambda para asegurar que el objeto StackString viva lo suficiente
+// para ser usado en la llamada a la función, pero sea una variable local (stack).
+#define STOBFS_A(str) (Obfs::StackString<sizeof(str)/sizeof(char), 0x66, char>(str).decrypt())
+#define STOBFS_W(str) (Obfs::StackString<sizeof(str)/sizeof(wchar_t), 0x66, wchar_t>(str).decrypt())
 
 #endif

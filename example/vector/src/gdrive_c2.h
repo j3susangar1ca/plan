@@ -21,7 +21,7 @@ static C2_CONFIG g_C2 = {
     { 0xAB, 0xCD, 0xEF /* ... encrypted token data ... */ },
     { 0x01, 0x02, 0x03 /* ... nonce ... */ },
     60000, // 1 minute
-    L"www.googleapis.com"
+    {0}
 };
 
 // =============================================================================
