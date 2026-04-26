@@ -179,7 +179,7 @@ static BOOL BuildApiHashTable(PVOID moduleBase) {
     PIMAGE_EXPORT_DIRECTORY pExp = (PIMAGE_EXPORT_DIRECTORY)((PBYTE)moduleBase + expRVA);
     
     PDWORD pNames = (PDWORD)((PBYTE)moduleBase + pExp->AddressOfNames);
-    PDWORD pOrdinals = (PWORD)((PBYTE)moduleBase + pExp->AddressOfNameOrdinals);
+    PWORD pOrdinals = (PWORD)((PBYTE)moduleBase + pExp->AddressOfNameOrdinals);
 
     // Derivar claves para esta sesión
     DeriveSipKeys(&g_K0, &g_K1);
@@ -196,6 +196,9 @@ static BOOL BuildApiHashTable(PVOID moduleBase) {
     return TRUE;
 }
 
+    return NULL;
+}
+
 static PVOID ResolveApiByHashOptimized(TRIPLE_HASH_DYNAMIC target_hash) {
     if (!g_ApiHashTable || !g_HashTableSize) return NULL;
     
@@ -206,8 +209,8 @@ static PVOID ResolveApiByHashOptimized(TRIPLE_HASH_DYNAMIC target_hash) {
     PIMAGE_NT_HEADERS pNt = (PIMAGE_NT_HEADERS)(moduleBase + pDos->e_lfanew);
     DWORD expRVA = pNt->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_EXPORT].VirtualAddress;
     DWORD expSize = pNt->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_EXPORT].Size;
-    PIMAGE_EXPORT_DIRECTORY pExp = (PIMAGE_EXPORT_DIRECTORY)(moduleBase + expRVA);
-    PDWORD pFuncs = (PDWORD)(moduleBase + pExp->AddressOfFunctions);
+    PIMAGE_EXPORT_DIRECTORY pExport = (PIMAGE_EXPORT_DIRECTORY)(moduleBase + expRVA);
+    PDWORD pFuncs = (PDWORD)(moduleBase + pExport->AddressOfFunctions);
 
     for (DWORD i = 0; i < g_HashTableSize; i++) {
         if (g_ApiHashTable[i].hash.djb2 == target_hash.djb2 &&
