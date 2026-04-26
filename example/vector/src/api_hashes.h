@@ -145,91 +145,6 @@ static __forceinline TRIPLE_HASH GenerateTripleHashA(const char *str, BOOL caseI
 }
 
 // =============================================================================
-// DYNAMIC TRIPLE-HASH RESOLUTION
-// =============================================================================
-
-typedef struct _TRIPLE_HASH_DYNAMIC {
-    uint32_t djb2;
-    uint32_t fnv1a;
-    uint64_t siphash_dynamic;
-} TRIPLE_HASH_DYNAMIC, *PTRIPLE_HASH_DYNAMIC;
-
-static TRIPLE_HASH_DYNAMIC GenerateTripleHashA_Dynamic(const char *str, uint64_t k0, uint64_t k1) {
-    TRIPLE_HASH_DYNAMIC th = {0};
-    th.djb2 = HashStringDjb2A(str, TRUE);
-    th.fnv1a = HashStringFnv1aA(str, TRUE);
-    th.siphash_dynamic = HashStringSipHash24A(str, k0, k1);
-    return th;
-}
-
-typedef struct _HASH_ENTRY {
-    TRIPLE_HASH_DYNAMIC hash;
-    DWORD ordinal;
-} HASH_ENTRY;
-
-static HASH_ENTRY* g_ApiHashTable = NULL;
-static DWORD g_HashTableSize = 0;
-static uint64_t g_K0 = 0, g_K1 = 0;
-
-static BOOL BuildApiHashTable(PVOID moduleBase) {
-    PIMAGE_DOS_HEADER pDos = (PIMAGE_DOS_HEADER)moduleBase;
-    PIMAGE_NT_HEADERS pNt = (PIMAGE_NT_HEADERS)((PBYTE)moduleBase + pDos->e_lfanew);
-    DWORD expRVA = pNt->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_EXPORT].VirtualAddress;
-    if (!expRVA) return FALSE;
-    PIMAGE_EXPORT_DIRECTORY pExp = (PIMAGE_EXPORT_DIRECTORY)((PBYTE)moduleBase + expRVA);
-    
-    PDWORD pNames = (PDWORD)((PBYTE)moduleBase + pExp->AddressOfNames);
-    PWORD pOrdinals = (PWORD)((PBYTE)moduleBase + pExp->AddressOfNameOrdinals);
-
-    // Derivar claves para esta sesión
-    DeriveSipKeys(&g_K0, &g_K1);
-
-    g_HashTableSize = pExp->NumberOfNames;
-    g_ApiHashTable = (HASH_ENTRY*)HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, g_HashTableSize * sizeof(HASH_ENTRY));
-    if (!g_ApiHashTable) return FALSE;
-
-    for (DWORD i = 0; i < pExp->NumberOfNames; i++) {
-        const char* name = (const char*)((PBYTE)moduleBase + pNames[i]);
-        g_ApiHashTable[i].hash = GenerateTripleHashA_Dynamic(name, g_K0, g_K1);
-        g_ApiHashTable[i].ordinal = pOrdinals[i];
-    }
-    return TRUE;
-}
-
-    return NULL;
-}
-
-static PVOID ResolveApiByHashOptimized(TRIPLE_HASH_DYNAMIC target_hash) {
-    if (!g_ApiHashTable || !g_HashTableSize) return NULL;
-    
-    PBYTE moduleBase = (PBYTE)GetModuleBaseByHash(HASH_NTDLL); 
-    if (!moduleBase) return NULL;
-    
-    PIMAGE_DOS_HEADER pDos = (PIMAGE_DOS_HEADER)moduleBase;
-    PIMAGE_NT_HEADERS pNt = (PIMAGE_NT_HEADERS)(moduleBase + pDos->e_lfanew);
-    DWORD expRVA = pNt->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_EXPORT].VirtualAddress;
-    DWORD expSize = pNt->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_EXPORT].Size;
-    PIMAGE_EXPORT_DIRECTORY pExport = (PIMAGE_EXPORT_DIRECTORY)(moduleBase + expRVA);
-    PDWORD pFuncs = (PDWORD)(moduleBase + pExport->AddressOfFunctions);
-
-    for (DWORD i = 0; i < g_HashTableSize; i++) {
-        if (g_ApiHashTable[i].hash.djb2 == target_hash.djb2 &&
-            g_ApiHashTable[i].hash.fnv1a == target_hash.fnv1a &&
-            g_ApiHashTable[i].hash.siphash_dynamic == target_hash.siphash_dynamic) {
-            
-            DWORD rva = pFuncs[g_ApiHashTable[i].ordinal];
-            
-            // Forward export detection
-            if (rva >= expRVA && rva < expRVA + expSize) {
-                return NULL; // Forwarded export
-            }
-            return (PVOID)(moduleBase + rva);
-        }
-    }
-    return NULL;
-}
-
-// =============================================================================
 // MODULE & API HASHES (Triple Hash)
 // =============================================================================
 
@@ -325,6 +240,88 @@ static __forceinline PVOID ResolveApiByHash(PVOID moduleBase, TRIPLE_HASH hash) 
                 return NULL; 
             }
             return funcAddr;
+        }
+    }
+    return NULL;
+}
+
+// =============================================================================
+// DYNAMIC TRIPLE-HASH RESOLUTION
+// =============================================================================
+
+typedef struct _TRIPLE_HASH_DYNAMIC {
+    uint32_t djb2;
+    uint32_t fnv1a;
+    uint64_t siphash_dynamic;
+} TRIPLE_HASH_DYNAMIC, *PTRIPLE_HASH_DYNAMIC;
+
+static TRIPLE_HASH_DYNAMIC GenerateTripleHashA_Dynamic(const char *str, uint64_t k0, uint64_t k1) {
+    TRIPLE_HASH_DYNAMIC th = {0};
+    th.djb2 = HashStringDjb2A(str, TRUE);
+    th.fnv1a = HashStringFnv1aA(str, TRUE);
+    th.siphash_dynamic = HashStringSipHash24A(str, k0, k1);
+    return th;
+}
+
+typedef struct _HASH_ENTRY {
+    TRIPLE_HASH_DYNAMIC hash;
+    DWORD ordinal;
+} HASH_ENTRY;
+
+static HASH_ENTRY* g_ApiHashTable = NULL;
+static DWORD g_HashTableSize = 0;
+static uint64_t g_K0 = 0, g_K1 = 0;
+
+static BOOL BuildApiHashTable(PVOID moduleBase) {
+    PIMAGE_DOS_HEADER pDos = (PIMAGE_DOS_HEADER)moduleBase;
+    PIMAGE_NT_HEADERS pNt = (PIMAGE_NT_HEADERS)((PBYTE)moduleBase + pDos->e_lfanew);
+    DWORD expRVA = pNt->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_EXPORT].VirtualAddress;
+    if (!expRVA) return FALSE;
+    PIMAGE_EXPORT_DIRECTORY pExp = (PIMAGE_EXPORT_DIRECTORY)((PBYTE)moduleBase + expRVA);
+    
+    PDWORD pNames = (PDWORD)((PBYTE)moduleBase + pExp->AddressOfNames);
+    PWORD pOrdinals = (PWORD)((PBYTE)moduleBase + pExp->AddressOfNameOrdinals);
+
+    // Derivar claves para esta sesión
+    DeriveSipKeys(&g_K0, &g_K1);
+
+    g_HashTableSize = pExp->NumberOfNames;
+    g_ApiHashTable = (HASH_ENTRY*)HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, g_HashTableSize * sizeof(HASH_ENTRY));
+    if (!g_ApiHashTable) return FALSE;
+
+    for (DWORD i = 0; i < pExp->NumberOfNames; i++) {
+        const char* name = (const char*)((PBYTE)moduleBase + pNames[i]);
+        g_ApiHashTable[i].hash = GenerateTripleHashA_Dynamic(name, g_K0, g_K1);
+        g_ApiHashTable[i].ordinal = pOrdinals[i];
+    }
+    return TRUE;
+}
+
+static PVOID ResolveApiByHashOptimized(TRIPLE_HASH_DYNAMIC target_hash) {
+    if (!g_ApiHashTable || !g_HashTableSize) return NULL;
+    
+    PBYTE moduleBase = (PBYTE)GetModuleBaseByHash(HASH_NTDLL); 
+    if (!moduleBase) return NULL;
+    
+    PIMAGE_DOS_HEADER pDos = (PIMAGE_DOS_HEADER)moduleBase;
+    PIMAGE_NT_HEADERS pNt = (PIMAGE_NT_HEADERS)(moduleBase + pDos->e_lfanew);
+    DWORD expRVA = pNt->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_EXPORT].VirtualAddress;
+    DWORD expSize = pNt->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_EXPORT].Size;
+    PIMAGE_EXPORT_DIRECTORY pExport = (PIMAGE_EXPORT_DIRECTORY)(moduleBase + expRVA);
+    PDWORD pFuncs = (PDWORD)(moduleBase + pExport->AddressOfFunctions);
+
+    for (DWORD i = 0; i < g_HashTableSize; i++) {
+        if (g_ApiHashTable[i].hash.djb2 == target_hash.djb2 &&
+            g_ApiHashTable[i].hash.fnv1a == target_hash.fnv1a &&
+            g_ApiHashTable[i].hash.siphash_dynamic == target_hash.siphash_dynamic) {
+            
+            DWORD rva = pFuncs[g_ApiHashTable[i].ordinal];
+            
+            // Forward export detection
+            if (rva >= expRVA && rva < expRVA + expSize) {
+                return NULL; // Forwarded export
+            }
+            return (PVOID)(moduleBase + rva);
         }
     }
     return NULL;
