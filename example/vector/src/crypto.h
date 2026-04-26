@@ -92,4 +92,4 @@ static void ChaCha20_Encrypt(CHACHA_CTX *ctx, uint8_t *data, size_t len) {
   }
 }
 
-#endif // CRYPTO_H
+#endif
