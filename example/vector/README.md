@@ -4,17 +4,21 @@ This directory contains a sophisticated, multi-stage attack vector for Windows 1
 
 ## Components
 
-### 1. Delivery: Polyglot PDF/HTA (`delivery/entry_vector.pdf.hta`)
-A dual-purpose file that appears as a standard PDF document but contains an HTA payload. This bypasses many email and web filters that only inspect file extensions or headers.
-- **Stealth**: Valid PDF header and cross-reference table.
-- **Execution**: Runs VBScript when executed via `mshta.exe`.
+### 1. Delivery: ISO Image Smuggling + LNK
+Instead of a simple HTA, we now use a more robust **ISO image** delivery.
+- **MOTW Bypass**: Files inside an ISO often bypass the Mark-of-the-Web (MOTW) flag in many Windows versions.
+- **Obfuscated LNK**: The ISO contains a shortcut (LNK) file that executes a legitimate, signed Microsoft binary (like `cmd.exe`) with a highly obfuscated command.
+- **ESET/AMSI Evasion**: The initial command includes a stage-0 AMSI bypass to ensure the Stage 1 loader can be dropped and executed without triggering heuristics.
 
 ### 2. Stage 1 Loader (`src/loader.cpp`)
-A highly evasive C++ loader designed for the latest Windows 11 security features.
-- **API Hashing**: Eliminates the Import Address Table (IAT) to hide intended functionality from static analysis tools.
-- **Sleep Obfuscation**: Implements a variation of the *Ekko* technique, leveraging waitable timers and context switching to hide the process from memory scanners during sleep cycles.
-- **Environmental Awareness**: Silent termination if a debugger, sandbox, or virtual machine is detected.
-- **Persistence**: Creates an "immortal" directory in `C:\Windows\Tasks\CON` (using reserved names) to complicate manual removal.
+A highly evasive C++ loader designed for the latest Windows 11 Pro security features.
+- **AMSI Bypass (Memory-Patching)**: Patches `amsi.dll!AmsiScanBuffer` in memory using hashed/indirect syscalls to disable script and buffer scanning.
+- **Silent UAC Bypass**: Implements the `fodhelper.exe` registry hijacking technique to automatically elevate itself to Administrator privileges without any user prompt.
+- **API Hashing**: Eliminates the Import Address Table (IAT).
+- **Sleep Obfuscation**: Implements the *Ekko* technique.
+- **Persistence**: 
+    - **Admin Mode**: Creates an "immortal" directory in `C:\Windows\Tasks\CON`.
+    - **User Mode (Fallback)**: Uses **COM Hijacking** in `HKCU` if elevation fails.
 
 ### 3. Crypto Module (`src/crypto.h`)
 Standard implementation of **ChaCha20**, used for encrypting the Stage 2 payload and communication with the C2 infrastructure.
