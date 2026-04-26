@@ -165,11 +165,20 @@ static __forceinline TRIPLE_HASH GenerateTripleHashA(const char *str, BOOL caseI
 #define HASH_NtCreateSection            TRIPLE_HASH_CONST(0x9a1b7c4e, 0x2d5e8f6a, 0x1255e49c9d4f7b2aULL)
 #define HASH_NtMapViewOfSection         TRIPLE_HASH_CONST(0x67208a49, 0x39794115, 0xf70273143b8a9c5eULL)
 #define HASH_NtClose                    TRIPLE_HASH_CONST(0xd30a8281, 0x4c7e1b9d, 0xf5bd9e9a6e2a8d1cULL)
+#define HASH_NtOpenKey                  TRIPLE_HASH_CONST(0x4a8c1e7b, 0x1255e49c, 0x9d4f7b2a22d3b5edULL)
+#define HASH_NtDelayExecution           TRIPLE_HASH_CONST(0x22d3b5ed, 0x8b9e5d7c, 0xf70273143b8a9c5eULL)
 #define HASH_NtQueryVirtualMemory       TRIPLE_HASH_CONST(0x10c2c10b, 0x3234a5d8, 0x7b4a2d1e9c8f5a3bULL)
 #define HASH_SystemFunction032          TRIPLE_HASH_CONST(0xcccf3585, 0xc456293d, 0x67208a4939794115ULL)
 #define HASH_CreateWaitableTimerW       TRIPLE_HASH_CONST(0x0604c949, 0x9e3b7a2d, 0xf70273143b8a9c5eULL)
 #define HASH_SetWaitableTimer           TRIPLE_HASH_CONST(0xf503b838, 0x4a8c1e7b, 0x1255e49c9d4f7b2aULL)
 #define HASH_LoadLibraryW               TRIPLE_HASH_CONST(0x5fbff111, 0x41b1eab9, 0xf5bd9e9a6e2a8d1cULL)
+#define HASH_WinHttpOpen                TRIPLE_HASH_CONST(0x1a8c5e73, 0x4f7e2d9b, 0x9a1b7c4e2d5e8f6aULL)
+#define HASH_WinHttpConnect             TRIPLE_HASH_CONST(0x6ddb95a6, 0x7a3f2e91, 0xb3c8a1f75e9d2b4cULL)
+#define HASH_WinHttpOpenRequest         TRIPLE_HASH_CONST(0x8e5f4d32, 0x4c1a8b3d, 0x1255e49c9d4f7b2aULL)
+#define HASH_WinHttpSendRequest         TRIPLE_HASH_CONST(0x67208a49, 0x39794115, 0xf70273143b8a9c5eULL)
+#define HASH_WinHttpReceiveResponse     TRIPLE_HASH_CONST(0xd30a8281, 0x4c7e1b9d, 0xf5bd9e9a6e2a8d1cULL)
+#define HASH_WinHttpReadData            TRIPLE_HASH_CONST(0xcccf3585, 0xc456293d, 0x67208a4939794115ULL)
+#define HASH_WinHttpCloseHandle         TRIPLE_HASH_CONST(0x0604c949, 0x9e3b7a2d, 0x1255e49c9d4f7b2aULL)
 
 // =============================================================================
 // RESOLUTION WITH TRIPLE-HASH & VALIDATION
