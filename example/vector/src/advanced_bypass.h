@@ -331,6 +331,10 @@ static void AdvancedSleepMask(DWORD dwMs, PVOID pAddress, SIZE_T sSize) {
     DWORD jitter = (dwMs * 20) / 100;
     DWORD actualMs = dwMs - jitter + (GetTickCount() % (2 * jitter + 1));
 
+    HANDLE hTimer = NULL;
+    LARGE_INTEGER li;
+    li.QuadPart = -(int64_t)actualMs * 10000;
+
     OBJECT_ATTRIBUTES objAttr = {0};
     InitializeObjectAttributes(&objAttr, NULL, 0, NULL, NULL);
 
