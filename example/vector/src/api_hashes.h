@@ -75,6 +75,7 @@ typedef struct _DUAL_HASH {
 #define HASH_RtlInitUnicodeString       DUAL_HASH_CONST(0x390FE8E7, 0x8C5A2B4D)
 #define HASH_NtGetContextThread         DUAL_HASH_CONST(0x9E0E1A44, 0x65ECAF30)
 #define HASH_NtSetContextThread         DUAL_HASH_CONST(0x308BE0D0, 0xEA61D9E4)
+#define HASH_NtWaitForSingleObject      DUAL_HASH_CONST(0x4C6DC63C, 0xB073C52E)
 
 // =============================================================================
 // HAShes DE APIs KERNEL32

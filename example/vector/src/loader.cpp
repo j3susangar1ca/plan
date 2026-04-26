@@ -39,6 +39,9 @@ static void InitializeApiTable() {
     
     g_ApiTable.NtSetContextThread.address = ResolveApiByHash(hNtdll, HASH_NtSetContextThread);
     g_ApiTable.NtSetContextThread.ssn = GetSSN(g_ApiTable.NtSetContextThread.address);
+    
+    g_ApiTable.NtWaitForSingleObject.address = ResolveApiByHash(hNtdll, HASH_NtWaitForSingleObject);
+    g_ApiTable.NtWaitForSingleObject.ssn = GetSSN(g_ApiTable.NtWaitForSingleObject.address);
 
     g_ApiTable.CreateWaitableTimerW = (ULONG_PTR)ResolveApiByHash(hKernel32, HASH_CreateWaitableTimerW);
     g_ApiTable.SetWaitableTimer = (ULONG_PTR)ResolveApiByHash(hKernel32, HASH_SetWaitableTimer);
@@ -76,7 +79,8 @@ extern "C" __declspec(dllexport) void StartPlugin() {
     }
 
     while (TRUE) {
-        Sleep(60000);
+        PVOID pTarget = (PBYTE)ctx.BaseAddress + ctx.TextSection->VirtualAddress;
+        ActiveSleepMask(60000, pTarget, ctx.RegionSize);
     }
 }
 

