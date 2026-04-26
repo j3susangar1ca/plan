@@ -10,11 +10,10 @@ Para eliminar el "ruido" de comandos en archivos LNK, utilizamos una técnica de
 - **Evasión de Línea de Comandos**: Al ejecutar el binario legítimo, no se generan argumentos sospechosos en el registro de procesos, evadiendo heurísticas basadas en `cmd.exe` o `powershell.exe`.
 
 ### 2. Stage 1 Loader (`src/loader.cpp`)
-Re-diseñado para alcanzar la invisibilidad total frente a EDRs y VBS:
-- **Bypass de AMSI mediante Hardware Breakpoints (HWBP)**: En lugar de parchear bytes o cambiar permisos de memoria (que activan alarmas de EDR), el loader utiliza los registros de depuración del procesador (`DR0`-`DR7`) para interceptar `AmsiScanBuffer` y forzar un resultado limpio sin tocar una sola instrucción de la DLL original.
-- **Halo's Gate (SSN Discovery)**: Resolución dinámica de números de llamadas al sistema (SSN) analizando bytes vecinos en `ntdll.dll`, lo que permite evadir hooks de EDR incluso si la función objetivo está comprometida.
-- **UAC Bypass vía Mock Directory**: Utiliza la técnica de directorios con espacios (`C:\Windows \System32`) para engañar a Windows y ejecutar binarios auto-elevados desde una ubicación de "confianza", evitando modificaciones ruidosas en el registro.
-- **Persistencia LotL (Living-off-the-Land)**: Implementa **COM Hijacking** de alta frecuencia para garantizar la ejecución persistente sin disparar alarmas de creación de servicios o tareas programadas.
+Diseñado para la máxima discreción, eliminando técnicas que generan alarmas por comportamiento:
+- **AMSI Bypass vía Library Unhooking**: En lugar de manipular registros de hardware (HWBP) o parchear memoria, el loader mapea una copia limpia de `amsi.dll` directamente desde el disco a una sección de memoria privada. Esto permite ejecutar funciones sin los "hooks" (sensores) instalados por el EDR, siendo totalmente invisible para monitores de parcheo o de contexto de hilo (`SetThreadContext`).
+- **Silent UAC Bypass (SilentCleanup/EventViewer)**: Utiliza tareas programadas de Windows (`SilentCleanup`) y el visor de eventos (`eventvwr.exe`) para elevar privilegios de forma legítima a través de variables de entorno, evitando la creación de rutas sospechosas o modificaciones ruidosas en el registro de clases de configuración.
+- **Invocaciones Directas (Halo's Gate)**: Mantenemos la resolución dinámica de SSNs para asegurar que las llamadas críticas al sistema ignoren cualquier hook remanente en `ntdll.dll`.
 
 ### 3. Crypto Module (`src/crypto.h`)
 Standard implementation of **ChaCha20**, used for encrypting the Stage 2 payload and communication with the C2 infrastructure.
