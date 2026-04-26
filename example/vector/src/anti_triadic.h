@@ -14,6 +14,7 @@
 
 #include <windows.h>
 #include <winternl.h>
+#include <intrin.h>
 #include "api_hashes.h"
 #include "syscalls.h"
 
