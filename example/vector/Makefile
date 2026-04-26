@@ -13,16 +13,13 @@ LDFLAGS = -shared -static-libgcc -static-libstdc++ \
           -Wl,--dynamicbase -Wl,--nxcompat \
           -Wl,--high-entropy-va -Wl,--subsystem,windows
 
-SRC_FILES = src/loader.cpp src/crypto.cpp
+SRC_FILES = src/loader.cpp
 ASM_FILES = src/syscalls.asm
-OBJ_FILES = bin/loader.o bin/syscalls.o bin/crypto.o
+OBJ_FILES = bin/loader.o bin/syscalls.o
 
 all: bin/version.dll
 
 bin/loader.o: src/loader.cpp
-	$(CXX) $(CFLAGS) -c $< -o $@
-
-bin/crypto.o: src/crypto.cpp
 	$(CXX) $(CFLAGS) -c $< -o $@
 
 bin/syscalls.o: src/syscalls.asm
