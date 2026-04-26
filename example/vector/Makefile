@@ -3,7 +3,7 @@
 
 CC = x86_64-w64-mingw32-g++
 CFLAGS = -Wall -O2 -mwindows -static -I./src
-LDFLAGS = -lntdll
+LDFLAGS = -lntdll -lwininet
 
 TARGET = bin/loader.exe
 SRC = src/loader.cpp
