@@ -446,7 +446,10 @@ namespace CXor {
 }
 
 // Per-build key changes because ctSeed() uses __TIME__
-#define OBFUSCATE(str)   (CXor::EncStr<sizeof(str)/sizeof(str[0]), CXor::ctSeed(), decltype(str[0])>(str).decrypt())
+// std::remove_const/remove_reference strip the `const T&` returned by decltype(str[0])
+// so the template parameter is a bare value type (char / wchar_t).
+#include <type_traits>
+#define OBFUSCATE(str)   (CXor::EncStr<sizeof(str)/sizeof(str[0]), CXor::ctSeed(), std::remove_const_t<std::remove_reference_t<decltype(str[0])>>>(str).decrypt())
 #define STOBFS_A(str)    OBFUSCATE(str)
 #define STOBFS_W(str)    OBFUSCATE(str)
 
