@@ -84,6 +84,8 @@ typedef struct _DUAL_HASH {
 #define HASH_SetWaitableTimer           DUAL_HASH_CONST(0xF503B838, 0x4A8C1E7B)
 #define HASH_GetSystemInfo              DUAL_HASH_CONST(0x7A3E9D2B, 0x1C5F8A4E)
 #define HASH_GetModuleFileNameW         DUAL_HASH_CONST(0x5B2C1A09, 0x8D4E7F3A)
+#define HASH_LoadLibraryW               DUAL_HASH_CONST(0x5FBFF111, 0x41B1EAB9)
+#define HASH_AmsiScanBuffer             DUAL_HASH_CONST(0x29FCD18E, 0xF76951A4)
 
 // =============================================================================
 // HAShes DE APIs WININET

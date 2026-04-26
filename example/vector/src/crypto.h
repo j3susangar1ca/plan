@@ -92,4 +92,25 @@ static void ChaCha20_Encrypt(CHACHA_CTX *ctx, uint8_t *data, size_t len) {
   }
 }
 
+// =============================================================================
+// OFUSCACIÓN DE CADENAS (CONSTEXPR STACK STRINGS)
+// =============================================================================
+
+namespace Obfs {
+    template <size_t N, char K, typename T>
+    struct StackString {
+        T data[N];
+        constexpr StackString(const T* str) : data{} {
+            for (size_t i = 0; i < N; ++i) data[i] = str[i] ^ K;
+        }
+        T* decrypt() {
+            for (size_t i = 0; i < N; ++i) data[i] ^= K;
+            return data;
+        }
+    };
+}
+
+#define STOBFS_A(str) (Obfs::StackString<sizeof(str)/sizeof(char), 0x69, char>(str).decrypt())
+#define STOBFS_W(str) (Obfs::StackString<sizeof(str)/sizeof(wchar_t), 0x69, wchar_t>(str).decrypt())
+
 #endif

