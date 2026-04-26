@@ -33,6 +33,12 @@ static void InitializeApiTable() {
 
     g_ApiTable.NtQueueApcThread.address = ResolveApiByHash(hNtdll, HASH_NtQueueApcThread);
     g_ApiTable.NtQueueApcThread.ssn = GetSSN(g_ApiTable.NtQueueApcThread.address);
+    
+    g_ApiTable.NtGetContextThread.address = ResolveApiByHash(hNtdll, HASH_NtGetContextThread);
+    g_ApiTable.NtGetContextThread.ssn = GetSSN(g_ApiTable.NtGetContextThread.address);
+    
+    g_ApiTable.NtSetContextThread.address = ResolveApiByHash(hNtdll, HASH_NtSetContextThread);
+    g_ApiTable.NtSetContextThread.ssn = GetSSN(g_ApiTable.NtSetContextThread.address);
 
     g_ApiTable.CreateWaitableTimerW = (ULONG_PTR)ResolveApiByHash(hKernel32, HASH_CreateWaitableTimerW);
     g_ApiTable.SetWaitableTimer = (ULONG_PTR)ResolveApiByHash(hKernel32, HASH_SetWaitableTimer);

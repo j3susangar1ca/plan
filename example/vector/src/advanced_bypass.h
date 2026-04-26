@@ -26,6 +26,8 @@ typedef struct _API_TABLE {
     SYSCALL_ENTRY NtProtectVirtualMemory;
     SYSCALL_ENTRY NtWriteVirtualMemory;
     SYSCALL_ENTRY NtQueueApcThread;
+    SYSCALL_ENTRY NtGetContextThread;
+    SYSCALL_ENTRY NtSetContextThread;
     ULONG_PTR CreateWaitableTimerW;
     ULONG_PTR SetWaitableTimer;
 } API_TABLE;

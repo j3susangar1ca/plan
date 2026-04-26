@@ -73,6 +73,8 @@ typedef struct _DUAL_HASH {
 #define HASH_NtOpenProcessToken         DUAL_HASH_CONST(0x8E3C7A1F, 0x4B9D5E2A)
 #define HASH_LdrLoadDll                 DUAL_HASH_CONST(0x9F4E2B8C, 0x3A7D1E5F)
 #define HASH_RtlInitUnicodeString       DUAL_HASH_CONST(0x390FE8E7, 0x8C5A2B4D)
+#define HASH_NtGetContextThread         DUAL_HASH_CONST(0x9E0E1A44, 0x65ECAF30)
+#define HASH_NtSetContextThread         DUAL_HASH_CONST(0x308BE0D0, 0xEA61D9E4)
 
 // =============================================================================
 // HAShes DE APIs KERNEL32
